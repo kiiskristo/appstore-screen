@@ -1,0 +1,95 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom styles that might be needed */
+@layer components {
+  .control-group {
+    @apply border border-gray-200 p-4 rounded-lg mb-4;
+  }
+  
+  .control-group-title {
+    @apply text-lg font-medium text-blue-600 mb-2;
+  }
+  
+  .form-input {
+    @apply w-full p-2 border border-gray-300 rounded mb-2;
+  }
+  
+  .form-label {
+    @apply block font-medium mb-1;
+  }
+  
+  .btn-primary {
+    @apply bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors;
+  }
+}
+
+/* Replace the previous animation classes with these */
+.carousel-container {
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+}
+
+.carousel-track {
+  display: flex;
+  transition: transform 0.3s ease-in-out;
+}
+
+.carousel-item {
+  transition: opacity 0.3s ease;
+  margin: 0 8px;
+}
+
+.carousel-item:not(.active) {
+  opacity: 0.7;
+  cursor: pointer;
+}
+
+.carousel-item:not(.active):hover {
+  opacity: 1;
+}
+
+/* Add smooth transitions to all preview elements */
+.preview-container {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+/* Add these dark mode utility classes to your global CSS */
+.editor-section {
+  @apply bg-gray-50 dark:bg-gray-700 p-3 rounded-lg;
+}
+
+.editor-title {
+  @apply font-semibold mb-3 dark:text-white;
+}
+
+.editor-label {
+  @apply block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1;
+}
+
+.editor-input {
+  @apply w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md 
+         bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200;
+}
+
+.editor-checkbox-label {
+  @apply ml-2 text-gray-700 dark:text-gray-200;
+}
+
+.editor-color-picker {
+  @apply p-0 w-full h-8 cursor-pointer rounded-md border border-gray-300 dark:border-gray-600;
+}
+
+.editor-range {
+  @apply w-full;
+}
+
+.editor-range::-webkit-slider-thumb {
+  @apply bg-blue-500;
+}
+
+.editor-range::-moz-range-thumb {
+  @apply bg-blue-500;
+} 

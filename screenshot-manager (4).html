@@ -1,0 +1,1262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>App Screenshot Manager</title>
+    <style>
+        :root {
+            --primary-color: #4a6bff;
+            --secondary-color: #45caff;
+            --dark-color: #333;
+            --light-color: #f5f5f5;
+            --border-radius: 8px;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f0f2f5;
+            color: var(--dark-color);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        header {
+            background-color: white;
+            padding: 20px;
+            border-radius: var(--border-radius);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            color: var(--primary-color);
+            margin-bottom: 10px;
+        }
+        
+        .main-content {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .editor-panel {
+            flex: 1;
+            min-width: 300px;
+            background-color: white;
+            padding: 20px;
+            border-radius: var(--border-radius);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .preview-panel {
+            flex: 2;
+            min-width: 400px;
+            background-color: white;
+            padding: 20px;
+            border-radius: var(--border-radius);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .multi-preview-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+            margin-bottom: 20px;
+            width: 100%;
+        }
+        
+        .preview-area {
+            background-color: #f5f5f5;
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+            width: 300px;
+            height: 600px;
+            display: none;
+        }
+        
+        .preview-area.active {
+            display: block;
+        }
+        
+        .preview-controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            margin-top: 20px;
+        }
+        
+        .preview-tabs {
+            display: flex;
+            gap: 5px;
+            margin-top: 10px;
+        }
+        
+        .preview-tab {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background-color: #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .preview-tab.active {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        
+        .orientation-toggle {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .orientation-toggle label {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+        }
+
+        .position-controls {
+            margin-top: 15px;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+        }
+        
+        .preview-area {
+            position: relative;
+            margin: 20px auto;
+            transition: all 0.3s ease;
+        }
+        
+        .device-frame {
+            position: relative;
+            display: inline-block;
+            margin: 0 auto;
+        }
+        
+        .device-frame img.phone-frame {
+            max-width: 100%;
+            height: auto;
+            display: block;
+        }
+        
+        .screenshot-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .screenshot {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            transition: all 0.3s ease;
+            position: absolute;
+        }
+        
+        .text-overlay {
+            position: absolute;
+            width: auto;
+            z-index: 30;
+            text-align: center;
+            pointer-events: none;
+            max-width: 90%;
+            color: white;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        .text-overlay h2 {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        
+        .text-overlay p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        
+        .control-group {
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: var(--border-radius);
+        }
+        
+        .control-group h3 {
+            margin-bottom: 10px;
+            color: var(--primary-color);
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        
+        input, select, button {
+            width: 100%;
+            padding: 8px 12px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            margin-bottom: 10px;
+        }
+        
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+        
+        button:hover {
+            background-color: #3a59e0;
+        }
+        
+        .gradient-presets {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .gradient-preset {
+            width: 60px;
+            height: 40px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .gradient-preset:hover {
+            transform: scale(1.05);
+        }
+        
+        .custom-gradient {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .custom-gradient input[type="color"] {
+            width: 80px;
+            height: 40px;
+            padding: 2px;
+        }
+        
+        .screenshot-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+            padding: 10px;
+            border: 1px solid #eee;
+            border-radius: var(--border-radius);
+        }
+        
+        .screenshot-thumbnail {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        
+        .screenshot-thumbnail:hover {
+            transform: scale(1.05);
+        }
+        
+        .screenshot-thumbnail.active {
+            border-color: var(--primary-color);
+        }
+        
+        .export-group {
+            margin-top: 20px;
+        }
+        
+        .device-size-info {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .drag-hint {
+            padding: 20px;
+            border: 2px dashed #ccc;
+            border-radius: var(--border-radius);
+            text-align: center;
+            margin-top: 10px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>App Screenshot Manager</h1>
+            <p>Create, customize, and export app screenshots for the App Store</p>
+        </header>
+        
+        <div class="main-content">
+            <div class="editor-panel">
+                <div class="control-group">
+                    <h3>Device Type</h3>
+                    <select id="device-type">
+                        <option value="iphone" selected>iPhone 6.7" or 6.9"</option>
+                        <option value="ipad">iPad 12.9" or 13"</option>
+                    </select>
+                    <div class="device-size-info" id="size-info">Size: 1320 × 2868px or 2868 × 1320px</div>
+                    
+                    <label>Orientation</label>
+                    <div class="orientation-toggle">
+                        <label>
+                            <input type="radio" name="orientation" value="portrait" checked> Portrait
+                        </label>
+                        <label>
+                            <input type="radio" name="orientation" value="landscape"> Landscape
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <h3>Screenshots</h3>
+                    <label for="upload-screenshot">Upload Screenshot</label>
+                    <input type="file" id="upload-screenshot" accept="image/*" multiple>
+                    <div class="drag-hint">Or drag and drop images here</div>
+                    <div class="screenshot-list" id="screenshot-list">
+                        <!-- Screenshot thumbnails will appear here -->
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <h3>Background</h3>
+                    <label>
+                        <input type="checkbox" id="use-gradient"> Use gradient background
+                    </label>
+                    
+                    <div id="gradient-options" style="display: none;">
+                        <label>Gradient Direction</label>
+                        <select id="gradient-direction">
+                            <option value="to right">Horizontal</option>
+                            <option value="to bottom">Vertical</option>
+                            <option value="to right bottom">Diagonal</option>
+                            <option value="to left bottom">Reverse Diagonal</option>
+                            <option value="circle">Radial</option>
+                        </select>
+                        
+                        <label>Gradient Presets</label>
+                        <div class="gradient-presets">
+                            <div class="gradient-preset" style="background: linear-gradient(to right, #4a6bff, #45caff);" data-colors="#4a6bff,#45caff" data-direction="to right"></div>
+                            <div class="gradient-preset" style="background: linear-gradient(to right, #ff6b6b, #ffa26b);" data-colors="#ff6b6b,#ffa26b" data-direction="to right"></div>
+                            <div class="gradient-preset" style="background: linear-gradient(to right, #00b09b, #96c93d);" data-colors="#00b09b,#96c93d" data-direction="to right"></div>
+                            <div class="gradient-preset" style="background: linear-gradient(to right, #614385, #516395);" data-colors="#614385,#516395" data-direction="to right"></div>
+                            <div class="gradient-preset" style="background: linear-gradient(to right, #8e2de2, #4a00e0);" data-colors="#8e2de2,#4a00e0" data-direction="to right"></div>
+                            <div class="gradient-preset" style="background: linear-gradient(to right, #f953c6, #b91d73);" data-colors="#f953c6,#b91d73" data-direction="to right"></div>
+                        </div>
+                        
+                        <label>Custom Gradient</label>
+                        <div class="custom-gradient">
+                            <input type="color" id="gradient-color-1" value="#4a6bff">
+                            <input type="color" id="gradient-color-2" value="#45caff">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <h3>Image Settings</h3>
+                    <label for="image-rotation">Rotation</label>
+                    <input type="range" id="image-rotation" min="-180" max="180" value="0">
+                    <span id="rotation-value">0°</span>
+                    
+                    <label for="image-scale">Scale</label>
+                    <input type="range" id="image-scale" min="20" max="150" value="90">
+                    <span id="scale-value">90%</span>
+                    
+                    <div class="position-controls">
+                        <label>Position X</label>
+                        <input type="range" id="position-x" min="-50" max="50" value="0">
+                        <span id="position-x-value">0%</span>
+                        
+                        <label>Position Y</label>
+                        <input type="range" id="position-y" min="-50" max="50" value="0">
+                        <span id="position-y-value">0%</span>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <h3>Text Overlay</h3>
+                    <label>
+                        <input type="checkbox" id="show-text"> Show text overlay
+                    </label>
+                    
+                    <div id="text-options" style="display: none;">
+                        <label for="text-title">Title</label>
+                        <input type="text" id="text-title" placeholder="Enter title">
+                        
+                        <label for="title-font-size">Title Font Size</label>
+                        <input type="range" id="title-font-size" min="12" max="72" value="24">
+                        <span id="title-font-size-value">24px</span>
+                        
+                        <label for="title-font-family">Title Font</label>
+                        <select id="title-font-family">
+                            <option value="'Segoe UI', sans-serif">Segoe UI</option>
+                            <option value="Arial, sans-serif">Arial</option>
+                            <option value="'Helvetica Neue', sans-serif">Helvetica Neue</option>
+                            <option value="Georgia, serif">Georgia</option>
+                            <option value="'Times New Roman', serif">Times New Roman</option>
+                            <option value="monospace">Monospace</option>
+                        </select>
+                        
+                        <label for="text-description">Description</label>
+                        <input type="text" id="text-description" placeholder="Enter description">
+                        
+                        <label for="description-font-size">Description Font Size</label>
+                        <input type="range" id="description-font-size" min="10" max="48" value="16">
+                        <span id="description-font-size-value">16px</span>
+                        
+                        <label for="description-font-family">Description Font</label>
+                        <select id="description-font-family">
+                            <option value="'Segoe UI', sans-serif">Segoe UI</option>
+                            <option value="Arial, sans-serif">Arial</option>
+                            <option value="'Helvetica Neue', sans-serif">Helvetica Neue</option>
+                            <option value="Georgia, serif">Georgia</option>
+                            <option value="'Times New Roman', serif">Times New Roman</option>
+                            <option value="monospace">Monospace</option>
+                        </select>
+                        
+                        <label for="text-color">Text Color</label>
+                        <input type="color" id="text-color" value="#ffffff">
+                        
+                        <label>Text Position</label>
+                        <select id="text-position">
+                            <option value="top">Top</option>
+                            <option value="bottom" selected>Bottom</option>
+                            <option value="center">Center</option>
+                            <option value="custom">Custom</option>
+                        </select>
+                        
+                        <div id="text-custom-position" style="display: none;">
+                            <label>Text Position X</label>
+                            <input type="range" id="text-position-x" min="0" max="100" value="50">
+                            <span id="text-position-x-value">50%</span>
+                            
+                            <label>Text Position Y</label>
+                            <input type="range" id="text-position-y" min="0" max="100" value="80">
+                            <span id="text-position-y-value">80%</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <h3>Device Frame</h3>
+                    <label>
+                        <input type="checkbox" id="show-frame"> Show device frame
+                    </label>
+                    <div class="frame-options" id="frame-options" style="display: none; margin-top: 10px;">
+                        <label for="frame-color">Frame Color</label>
+                        <select id="frame-color">
+                            <option value="black">Black</option>
+                            <option value="white">White</option>
+                            <option value="silver">Silver</option>
+                            <option value="gold">Gold</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="export-group">
+                    <button id="export-btn">Export Screenshot</button>
+                </div>
+            </div>
+            
+            <div class="preview-panel">
+                <h2>Preview</h2>
+                
+                <div class="preview-area" id="preview-area">
+                    <div class="screenshot-container" id="screenshot-container">
+                        <!-- Screenshot will be inserted here -->
+                        <img id="screenshot-image" class="screenshot" style="display: none;">
+                    </div>
+                    
+                    <div class="device-frame" id="device-frame" style="display: none;">
+                        <!-- Device frame will be inserted here -->
+                    </div>
+                    
+                    <div class="text-overlay" id="text-overlay" style="display: none;">
+                        <h2 id="overlay-title">App Title</h2>
+                        <p id="overlay-description">App description goes here</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script>
+        // DOM Elements
+        const deviceTypeSelect = document.getElementById('device-type');
+        const orientationInputs = document.querySelectorAll('input[name="orientation"]');
+        const sizeInfo = document.getElementById('size-info');
+        const uploadScreenshot = document.getElementById('upload-screenshot');
+        const screenshotList = document.getElementById('screenshot-list');
+        const useGradient = document.getElementById('use-gradient');
+        const gradientOptions = document.getElementById('gradient-options');
+        const gradientDirection = document.getElementById('gradient-direction');
+        const gradientColor1 = document.getElementById('gradient-color-1');
+        const gradientColor2 = document.getElementById('gradient-color-2');
+        const gradientPresets = document.querySelectorAll('.gradient-preset');
+        const imageRotation = document.getElementById('image-rotation');
+        const rotationValue = document.getElementById('rotation-value');
+        const imageScale = document.getElementById('image-scale');
+        const scaleValue = document.getElementById('scale-value');
+        const positionX = document.getElementById('position-x');
+        const positionXValue = document.getElementById('position-x-value');
+        const positionY = document.getElementById('position-y');
+        const positionYValue = document.getElementById('position-y-value');
+        const showText = document.getElementById('show-text');
+        const textOptions = document.getElementById('text-options');
+        const textTitle = document.getElementById('text-title');
+        const textDescription = document.getElementById('text-description');
+        const titleFontSize = document.getElementById('title-font-size');
+        const titleFontSizeValue = document.getElementById('title-font-size-value');
+        const titleFontFamily = document.getElementById('title-font-family');
+        const descriptionFontSize = document.getElementById('description-font-size');
+        const descriptionFontSizeValue = document.getElementById('description-font-size-value');
+        const descriptionFontFamily = document.getElementById('description-font-family');
+        const textColor = document.getElementById('text-color');
+        const textPosition = document.getElementById('text-position');
+        const textCustomPosition = document.getElementById('text-custom-position');
+        const textPositionX = document.getElementById('text-position-x');
+        const textPositionXValue = document.getElementById('text-position-x-value');
+        const textPositionY = document.getElementById('text-position-y');
+        const textPositionYValue = document.getElementById('text-position-y-value');
+        const showFrame = document.getElementById('show-frame');
+        const frameOptions = document.getElementById('frame-options');
+        const frameColor = document.getElementById('frame-color');
+        const exportBtn = document.getElementById('export-btn');
+        const multiPreviewContainer = document.getElementById('multi-preview-container');
+        const previewTabs = document.getElementById('preview-tabs');
+        const addPreviewBtn = document.getElementById('add-preview-btn');
+        const removePreviewBtn = document.getElementById('remove-preview-btn');
+        const dragHint = document.querySelector('.drag-hint');
+
+        // Device dimensions
+        const deviceDimensions = {
+            iphone: {
+                portrait: { width: 1320, height: 2868 },
+                landscape: { width: 2868, height: 1320 }
+            },
+            ipad: {
+                portrait: { width: 2048, height: 2732 },
+                landscape: { width: 2732, height: 2048 }
+            }
+        };
+
+        // Current state
+        let currentOrientation = 'portrait';
+        let screenshots = [];
+        let currentScreenshotIndex = -1;
+        let activePreviewIndex = 0;
+        let previewCount = 1;
+        let previewSettings = [{
+            screenshotIndex: -1,
+            orientation: 'portrait',
+            rotation: 0,
+            scale: 90,
+            positionX: 0,
+            positionY: 0,
+            showText: false,
+            textTitle: 'Your App Name',
+            textDescription: 'The perfect solution for your needs',
+            titleFontSize: 24,
+            titleFontFamily: "'Segoe UI', sans-serif",
+            descriptionFontSize: 16,
+            descriptionFontFamily: "'Segoe UI', sans-serif",
+            textColor: '#ffffff',
+            textPosition: 'bottom',
+            textPositionX: 50,
+            textPositionY: 80,
+            showFrame: true,
+            frameColor: 'black'
+        }];
+
+        // Add preview tab
+        function addPreview() {
+            if (previewCount >= 6) {
+                alert('Maximum of 6 previews allowed');
+                return;
+            }
+            
+            previewCount++;
+            const newIndex = previewCount - 1;
+            
+            // Clone settings from current preview
+            previewSettings[newIndex] = JSON.parse(JSON.stringify(previewSettings[activePreviewIndex]));
+            
+            // Create new preview area
+            const newPreviewArea = document.createElement('div');
+            newPreviewArea.className = 'preview-area';
+            newPreviewArea.id = `preview-area-${newIndex}`;
+            newPreviewArea.dataset.index = newIndex;
+            
+            newPreviewArea.innerHTML = `
+                <div class="device-frame" id="device-frame-${newIndex}">
+                    <div class="screenshot-container" id="screenshot-container-${newIndex}">
+                        <img id="screenshot-image-${newIndex}" class="screenshot" style="display: none;">
+                    </div>
+                    <div class="text-overlay" id="text-overlay-${newIndex}" style="display: none;">
+                        <h2 id="overlay-title-${newIndex}">App Title</h2>
+                        <p id="overlay-description-${newIndex}">App description goes here</p>
+                    </div>
+                </div>
+            `;
+            
+            multiPreviewContainer.appendChild(newPreviewArea);
+            
+            // Create new tab
+            const newTab = document.createElement('div');
+            newTab.className = 'preview-tab';
+            newTab.dataset.index = newIndex;
+            newTab.textContent = newIndex + 1;
+            
+            newTab.addEventListener('click', function() {
+                switchPreview(parseInt(this.dataset.index));
+            });
+            
+            previewTabs.appendChild(newTab);
+            
+            // Switch to new preview
+            switchPreview(newIndex);
+        }
+        
+        // Remove current preview
+        function removePreview() {
+            if (previewCount <= 1) {
+                alert('Cannot remove the last preview');
+                return;
+            }
+            
+            // Remove preview area
+            const previewToRemove = document.getElementById(`preview-area-${activePreviewIndex}`);
+            previewToRemove.remove();
+            
+            // Remove tab
+            const tabToRemove = document.querySelector(`.preview-tab[data-index="${activePreviewIndex}"]`);
+            tabToRemove.remove();
+            
+            // Remove from settings array
+            previewSettings.splice(activePreviewIndex, 1);
+            previewCount--;
+            
+            // Renumber remaining tabs and update data-index
+            const tabs = document.querySelectorAll('.preview-tab');
+            tabs.forEach((tab, index) => {
+                tab.textContent = index + 1;
+                tab.dataset.index = index;
+            });
+            
+            // Renumber preview areas
+            const previewAreas = document.querySelectorAll('.preview-area');
+            previewAreas.forEach((area, index) => {
+                area.id = `preview-area-${index}`;
+                area.dataset.index = index;
+                
+                // Update IDs of inner elements
+                area.querySelector('.device-frame').id = `device-frame-${index}`;
+                area.querySelector('.screenshot-container').id = `screenshot-container-${index}`;
+                area.querySelector('.screenshot').id = `screenshot-image-${index}`;
+                area.querySelector('.text-overlay').id = `text-overlay-${index}`;
+                area.querySelector('.text-overlay h2').id = `overlay-title-${index}`;
+                area.querySelector('.text-overlay p').id = `overlay-description-${index}`;
+            });
+            
+            // Switch to first preview
+            switchPreview(0);
+        }
+        
+        // Switch between previews
+        function switchPreview(index) {
+            // Save current settings
+            if (activePreviewIndex >= 0) {
+                saveCurrentSettings();
+            }
+            
+            // Hide all preview areas
+            document.querySelectorAll('.preview-area').forEach(area => {
+                area.classList.remove('active');
+            });
+            
+            // Hide all tabs
+            document.querySelectorAll('.preview-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected preview
+            const selectedPreview = document.getElementById(`preview-area-${index}`);
+            if (selectedPreview) {
+                selectedPreview.classList.add('active');
+            }
+            
+            // Highlight selected tab
+            const selectedTab = document.querySelector(`.preview-tab[data-index="${index}"]`);
+            if (selectedTab) {
+                selectedTab.classList.add('active');
+            }
+            
+            // Update active index
+            activePreviewIndex = index;
+            
+            // Load settings for this preview
+            loadPreviewSettings(index);
+        }
+        
+        // Save current settings
+        function saveCurrentSettings() {
+            const settings = previewSettings[activePreviewIndex];
+            
+            settings.screenshotIndex = currentScreenshotIndex;
+            settings.orientation = currentOrientation;
+            settings.rotation = parseInt(imageRotation.value);
+            settings.scale = parseInt(imageScale.value);
+            settings.positionX = parseInt(positionX.value);
+            settings.positionY = parseInt(positionY.value);
+            settings.showText = showText.checked;
+            settings.textTitle = textTitle.value;
+            settings.textDescription = textDescription.value;
+            settings.titleFontSize = parseInt(titleFontSize.value);
+            settings.titleFontFamily = titleFontFamily.value;
+            settings.descriptionFontSize = parseInt(descriptionFontSize.value);
+            settings.descriptionFontFamily = descriptionFontFamily.value;
+            settings.textColor = textColor.value;
+            settings.textPosition = textPosition.value;
+            settings.textPositionX = parseInt(textPositionX.value);
+            settings.textPositionY = parseInt(textPositionY.value);
+            settings.showFrame = showFrame.checked;
+            settings.frameColor = frameColor.value;
+        }
+        
+        // Load settings for the selected preview
+        function loadPreviewSettings(index) {
+            const settings = previewSettings[index];
+            
+            currentScreenshotIndex = settings.screenshotIndex;
+            currentOrientation = settings.orientation;
+            
+            // Update UI to match settings
+            orientationInputs.forEach(input => {
+                input.checked = input.value === settings.orientation;
+            });
+            
+            imageRotation.value = settings.rotation;
+            rotationValue.textContent = `${settings.rotation}°`;
+            
+            imageScale.value = settings.scale;
+            scaleValue.textContent = `${settings.scale}%`;
+            
+            positionX.value = settings.positionX;
+            positionXValue.textContent = `${settings.positionX}%`;
+            
+            positionY.value = settings.positionY;
+            positionYValue.textContent = `${settings.positionY}%`;
+            
+            showText.checked = settings.showText;
+            textOptions.style.display = settings.showText ? 'block' : 'none';
+            
+            textTitle.value = settings.textTitle;
+            textDescription.value = settings.textDescription;
+            
+            titleFontSize.value = settings.titleFontSize;
+            titleFontSizeValue.textContent = `${settings.titleFontSize}px`;
+            
+            titleFontFamily.value = settings.titleFontFamily;
+            
+            descriptionFontSize.value = settings.descriptionFontSize;
+            descriptionFontSizeValue.textContent = `${settings.descriptionFontSize}px`;
+            
+            descriptionFontFamily.value = settings.descriptionFontFamily;
+            
+            textColor.value = settings.textColor;
+            
+            textPosition.value = settings.textPosition;
+            textCustomPosition.style.display = settings.textPosition === 'custom' ? 'block' : 'none';
+            
+            textPositionX.value = settings.textPositionX;
+            textPositionXValue.textContent = `${settings.textPositionX}%`;
+            
+            textPositionY.value = settings.textPositionY;
+            textPositionYValue.textContent = `${settings.textPositionY}%`;
+            
+            showFrame.checked = settings.showFrame;
+            frameOptions.style.display = settings.showFrame ? 'block' : 'none';
+            
+            frameColor.value = settings.frameColor;
+            
+            // Highlight the current screenshot
+            document.querySelectorAll('.screenshot-thumbnail').forEach(thumb => {
+                thumb.classList.remove('active');
+                if (parseInt(thumb.dataset.index) === currentScreenshotIndex) {
+                    thumb.classList.add('active');
+                }
+            });
+            
+            updatePreview();
+        }
+
+        // Update size information based on selected device
+        function updateSizeInfo() {
+            const device = deviceTypeSelect.value;
+            const orientation = currentOrientation;
+            
+            if (device === 'iphone') {
+                if (orientation === 'portrait') {
+                    sizeInfo.textContent = 'Size: 1320 × 2868px';
+                } else {
+                    sizeInfo.textContent = 'Size: 2868 × 1320px';
+                }
+            } else {
+                if (orientation === 'portrait') {
+                    sizeInfo.textContent = 'Size: 2048 × 2732px';
+                } else {
+                    sizeInfo.textContent = 'Size: 2732 × 2048px';
+                }
+            }
+            updatePreview();
+        }
+
+        // Toggle gradient options
+        useGradient.addEventListener('change', function() {
+            gradientOptions.style.display = this.checked ? 'block' : 'none';
+            updatePreview();
+        });
+
+        // Toggle text overlay options
+        showText.addEventListener('change', function() {
+            textOptions.style.display = this.checked ? 'block' : 'none';
+            updatePreview();
+        });
+
+        // Update rotation value display
+        imageRotation.addEventListener('input', function() {
+            rotationValue.textContent = `${this.value}°`;
+            updatePreview();
+        });
+
+        // Update scale value display
+        imageScale.addEventListener('input', function() {
+            scaleValue.textContent = `${this.value}%`;
+            updatePreview();
+        });
+
+        // Handle device type change
+        deviceTypeSelect.addEventListener('change', updateSizeInfo);
+
+        // Handle gradient preset selection
+        gradientPresets.forEach(preset => {
+            preset.addEventListener('click', function() {
+                const colors = this.dataset.colors.split(',');
+                gradientColor1.value = colors[0];
+                gradientColor2.value = colors[1];
+                gradientDirection.value = this.dataset.direction;
+                updatePreview();
+            });
+        });
+
+        // Handle text inputs
+        textTitle.addEventListener('input', updatePreview);
+        textDescription.addEventListener('input', updatePreview);
+        textColor.addEventListener('input', updatePreview);
+
+        // Handle frame toggle
+        showFrame.addEventListener('change', function() {
+            frameOptions.style.display = this.checked ? 'block' : 'none';
+            updatePreview();
+        });
+        
+        frameColor.addEventListener('change', updatePreview);
+
+        // Handle gradient inputs
+        gradientColor1.addEventListener('input', updatePreview);
+        gradientColor2.addEventListener('input', updatePreview);
+        gradientDirection.addEventListener('change', updatePreview);
+
+        // Upload screenshot
+        uploadScreenshot.addEventListener('change', function(e) {
+            handleFiles(e.target.files);
+        });
+
+        // Drag and drop functionality
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dragHint.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dragHint.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dragHint.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight() {
+            dragHint.style.borderColor = '#4a6bff';
+            dragHint.style.backgroundColor = 'rgba(74, 107, 255, 0.1)';
+        }
+
+        function unhighlight() {
+            dragHint.style.borderColor = '#ccc';
+            dragHint.style.backgroundColor = 'transparent';
+        }
+
+        dragHint.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleFiles(files);
+        }
+
+        // Process files
+        function handleFiles(files) {
+            [...files].forEach(file => {
+                if (file.type.match('image.*')) {
+                    const reader = new FileReader();
+                    
+                    reader.onload = function(e) {
+                        const img = new Image();
+                        img.src = e.target.result;
+                        
+                        img.onload = function() {
+                            // Determine orientation from image dimensions
+                            const isLandscape = img.width > img.height;
+                            
+                            screenshots.push({
+                                src: e.target.result,
+                                isLandscape: isLandscape
+                            });
+                            
+                            addScreenshotThumbnail(e.target.result, screenshots.length - 1);
+                            
+                            if (currentScreenshotIndex === -1) {
+                                currentScreenshotIndex = 0;
+                                selectScreenshot(0);
+                            }
+                        };
+                    };
+                    
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+
+        // Add thumbnail to list
+        function addScreenshotThumbnail(src, index) {
+            const img = document.createElement('img');
+            img.src = src;
+            img.classList.add('screenshot-thumbnail');
+            img.dataset.index = index;
+            
+            img.addEventListener('click', function() {
+                selectScreenshot(parseInt(this.dataset.index));
+            });
+            
+            screenshotList.appendChild(img);
+        }
+
+        // Select screenshot
+        function selectScreenshot(index) {
+            currentScreenshotIndex = index;
+            
+            // Update UI
+            document.querySelectorAll('.screenshot-thumbnail').forEach(thumb => {
+                thumb.classList.remove('active');
+                if (parseInt(thumb.dataset.index) === index) {
+                    thumb.classList.add('active');
+                }
+            });
+            
+            // Apply to current preview
+            updatePreview();
+            
+            // Update settings
+            previewSettings[activePreviewIndex].screenshotIndex = index;
+        }
+
+        // Toggle orientation
+        function toggleOrientation() {
+            currentOrientation = currentOrientation === 'portrait' ? 'landscape' : 'portrait';
+            
+            // Update the radio buttons
+            orientationInputs.forEach(input => {
+                if (input.value === currentOrientation) {
+                    input.checked = true;
+                }
+            });
+            
+            updatePreview();
+            updateSizeInfo();
+        }
+
+        // Initialize
+        updateSizeInfo();
+        
+        // Set default values
+        textTitle.value = "Your App Name";
+        textDescription.value = "The perfect solution for your needs";
+        
+        // Load sample screenshots
+        const sampleImg = new Image();
+        sampleImg.onload = function() {
+            screenshots.push({
+                src: '/api/placeholder/600/1200',
+                isLandscape: false
+            });
+            addScreenshotThumbnail('/api/placeholder/600/1200', 0);
+            currentScreenshotIndex = 0;
+            selectScreenshot(0);
+        };
+        sampleImg.src = '/api/placeholder/600/1200';
+        
+        // Initialize first preview
+        switchPreview(0);
+        
+        // Update preview
+        function updatePreview() {
+            const device = deviceTypeSelect.value;
+            const dimensions = deviceDimensions[device][currentOrientation];
+            const previewIndex = activePreviewIndex;
+            
+            // Get elements for this preview
+            const previewArea = document.getElementById(`preview-area-${previewIndex}`);
+            const deviceFrame = document.getElementById(`device-frame-${previewIndex}`);
+            const screenshotContainer = document.getElementById(`screenshot-container-${previewIndex}`);
+            const screenshotImage = document.getElementById(`screenshot-image-${previewIndex}`);
+            const textOverlay = document.getElementById(`text-overlay-${previewIndex}`);
+            const overlayTitle = document.getElementById(`overlay-title-${previewIndex}`);
+            const overlayDescription = document.getElementById(`overlay-description-${previewIndex}`);
+            
+            if (!previewArea) return;
+            
+            // Set preview area dimensions based on orientation
+            if (currentOrientation === 'portrait') {
+                previewArea.style.width = '240px';
+                previewArea.style.height = '480px';
+            } else {
+                previewArea.style.width = '480px';
+                previewArea.style.height = '240px';
+            }
+            
+            // Set background
+            if (useGradient.checked) {
+                const direction = gradientDirection.value;
+                const color1 = gradientColor1.value;
+                const color2 = gradientColor2.value;
+                
+                if (direction === 'circle') {
+                    screenshotContainer.style.background = `radial-gradient(circle, ${color1}, ${color2})`;
+                } else {
+                    screenshotContainer.style.background = `linear-gradient(${direction}, ${color1}, ${color2})`;
+                }
+            } else {
+                screenshotContainer.style.background = 'white';
+            }
+            
+            // Update device frame
+            if (showFrame.checked) {
+                deviceFrame.style.display = 'block';
+                deviceFrame.style.borderColor = frameColor.value;
+            } else {
+                deviceFrame.style.display = 'block';
+                deviceFrame.style.border = 'none';
+            }
+            
+            // Add screenshot if one is selected
+            if (currentScreenshotIndex >= 0 && screenshots[currentScreenshotIndex]) {
+                screenshotImage.style.display = 'block';
+                screenshotImage.src = screenshots[currentScreenshotIndex].src;
+                
+                // Apply image transformations
+                const rotation = imageRotation.value;
+                const scale = imageScale.value / 100;
+                const xPos = positionX.value;
+                const yPos = positionY.value;
+                
+                screenshotImage.style.transform = `translate(${xPos}%, ${yPos}%) rotate(${rotation}deg) scale(${scale})`;
+            } else {
+                screenshotImage.style.display = 'none';
+            }
+            
+            // Update text overlay
+            if (showText.checked) {
+                textOverlay.style.display = 'block';
+                overlayTitle.textContent = textTitle.value || 'App Title';
+                overlayDescription.textContent = textDescription.value || 'App description goes here';
+                
+                // Apply font settings
+                overlayTitle.style.fontSize = `${titleFontSize.value}px`;
+                overlayTitle.style.fontFamily = titleFontFamily.value;
+                overlayDescription.style.fontSize = `${descriptionFontSize.value}px`;
+                overlayDescription.style.fontFamily = descriptionFontFamily.value;
+                textOverlay.style.color = textColor.value;
+                
+                // Position the text overlay
+                const tPosition = textPosition.value;
+                
+                if (tPosition === 'custom') {
+                    const tx = textPositionX.value;
+                    const ty = textPositionY.value;
+                    
+                    textOverlay.style.top = 'auto';
+                    textOverlay.style.bottom = 'auto';
+                    textOverlay.style.left = `${tx}%`;
+                    textOverlay.style.transform = `translateX(-50%)`;
+                    textOverlay.style.top = `${ty}%`;
+                    textOverlay.style.transform += ' translateY(-50%)';
+                } else if (tPosition === 'top') {
+                    textOverlay.style.top = '10%';
+                    textOverlay.style.bottom = 'auto';
+                    textOverlay.style.left = '50%';
+                    textOverlay.style.transform = 'translateX(-50%)';
+                } else if (tPosition === 'bottom') {
+                    textOverlay.style.top = 'auto';
+                    textOverlay.style.bottom = '10%';
+                    textOverlay.style.left = '50%';
+                    textOverlay.style.transform = 'translateX(-50%)';
+                } else if (tPosition === 'center') {
+                    textOverlay.style.top = '50%';
+                    textOverlay.style.bottom = 'auto';
+                    textOverlay.style.left = '50%';
+                    textOverlay.style.transform = 'translate(-50%, -50%)';
+                }
+            } else {
+                textOverlay.style.display = 'none';
+            }
+        }
+
+        // Export all screenshots
+        exportBtn.addEventListener('click', function() {
+            // Save current settings first
+            saveCurrentSettings();
+            
+            // Create a zip file if there are multiple previews
+            if (previewCount > 1) {
+                alert('Will export all ' + previewCount + ' screenshots.');
+                
+                // Export each preview one by one
+                for (let i = 0; i < previewCount; i++) {
+                    switchPreview(i);
+                    const previewArea = document.getElementById(`preview-area-${i}`);
+                    
+                    html2canvas(previewArea).then(canvas => {
+                        const link = document.createElement('a');
+                        link.download = `app-screenshot-${i+1}.png`;
+                        link.href = canvas.toDataURL('image/png');
+                        link.click();
+                    });
+                }
+            } else {
+                // Just export the current preview
+                const previewArea = document.getElementById(`preview-area-${activePreviewIndex}`);
+                
+                html2canvas(previewArea).then(canvas => {
+                    const link = document.createElement('a');
+                    link.download = `app-screenshot.png`;
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                });
+            }
+        });
+
+        // Initialize event listeners for new controls
+        positionX.addEventListener('input', function() {
+            positionXValue.textContent = `${this.value}%`;
+            updatePreview();
+        });
+        
+        positionY.addEventListener('input', function() {
+            positionYValue.textContent = `${this.value}%`;
+            updatePreview();
+        });
+        
+        titleFontSize.addEventListener('input', function() {
+            titleFontSizeValue.textContent = `${this.value}px`;
+            updatePreview();
+        });
+        
+        descriptionFontSize.addEventListener('input', function() {
+            descriptionFontSizeValue.textContent = `${this.value}px`;
+            updatePreview();
+        });
+        
+        titleFontFamily.addEventListener('change', updatePreview);
+        descriptionFontFamily.addEventListener('change', updatePreview);
+        
+        textPosition.addEventListener('change', function() {
+            textCustomPosition.style.display = this.value === 'custom' ? 'block' : 'none';
+            updatePreview();
+        });
+        
+        textPositionX.addEventListener('input', function() {
+            textPositionXValue.textContent = `${this.value}%`;
+            updatePreview();
+        });
+        
+        textPositionY.addEventListener('input', function() {
+            textPositionYValue.textContent = `${this.value}%`;
+            updatePreview();
+        });
+        
+        // Event listeners for orientation
+        orientationInputs.forEach(input => {
+            input.addEventListener('change', function() {
+                currentOrientation = this.value;
+                updateSizeInfo();
+                updatePreview();
+            });
+        });
+    </script>
+</body>
+</html>
