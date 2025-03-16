@@ -79,20 +79,20 @@
 }
 
 .editor-label {
-  @apply block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1;
+  @apply block text-sm font-medium text-gray-700 text-gray-200:dark mb-1;
 }
 
 .editor-input {
-  @apply w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md 
-         bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200;
+  @apply w-full p-2 border border-gray-300 border-gray-600:dark rounded-md 
+         bg-white bg-gray-800:dark text-gray-700 text-gray-200:dark;
 }
 
 .editor-checkbox-label {
-  @apply ml-2 text-gray-700 dark:text-gray-200;
+  @apply ml-2 text-gray-700 text-gray-200:dark;
 }
 
 .editor-color-picker {
-  @apply p-0 w-full h-8 cursor-pointer rounded-md border border-gray-300 dark:border-gray-600;
+  @apply p-0 w-full h-8 cursor-pointer rounded-md border border-gray-300 border-gray-600:dark;
 }
 
 .editor-range {
