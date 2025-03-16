@@ -139,38 +139,85 @@ function CanvasPreviewPanel({
       // Calculate size based on orientation
       let drawWidth, drawHeight;
       const baseSize = canvas.width / (dpr * 1.33); // 75% of canvas width
+      const paddingAmount = -5; // 2px on each side
       
       if (isLandscape) {
         drawWidth = baseSize;
         drawHeight = baseSize * (img.height / img.width);
+        
+        // Add padding to shorter dimension (height in landscape)
+        const paddingRatio = paddingAmount / drawHeight;
+        const srcPadding = img.height * paddingRatio;
+        
+        // When drawing, use a smaller source rectangle
+        ctx.save();
+        ctx.translate(centerX, centerY);
+        ctx.translate(
+          (canvas.width * currentSettings.positionX) / (100 * dpr),
+          (canvas.height * currentSettings.positionY) / (100 * dpr)
+        );
+        ctx.rotate((currentSettings.rotation * Math.PI) / 180);
+        ctx.scale(currentSettings.scale / 100, currentSettings.scale / 100);
+        
+        // Draw screenshot with rounded corners
+        if (currentSettings.showFrame && currentSettings.cornerRadius > 0) {
+          drawRoundedRect(ctx, -drawWidth/2, -drawHeight/2, drawWidth, drawHeight, currentSettings.cornerRadius);
+          ctx.clip();
+          
+          // Draw with padding
+          ctx.drawImage(
+            img, 
+            0, srcPadding, img.width, img.height - (srcPadding * 2), // Source with padding
+            -drawWidth/2, -drawHeight/2, drawWidth, drawHeight        // Destination
+          );
+          ctx.restore();
+        } else {
+          // Draw with padding
+          ctx.drawImage(
+            img, 
+            0, srcPadding, img.width, img.height - (srcPadding * 2), // Source with padding
+            -drawWidth/2, -drawHeight/2, drawWidth, drawHeight        // Destination
+          );
+        }
       } else {
         drawHeight = baseSize;
         drawWidth = baseSize * (img.width / img.height);
+        
+        // Add padding to shorter dimension (width in portrait)
+        const paddingRatio = paddingAmount / drawWidth;
+        const srcPadding = img.width * paddingRatio;
+        
+        // Save context for transformations
+        ctx.save();
+        ctx.translate(centerX, centerY);
+        ctx.translate(
+          (canvas.width * currentSettings.positionX) / (100 * dpr),
+          (canvas.height * currentSettings.positionY) / (100 * dpr)
+        );
+        ctx.rotate((currentSettings.rotation * Math.PI) / 180);
+        ctx.scale(currentSettings.scale / 100, currentSettings.scale / 100);
+        
+        // Draw screenshot with rounded corners
+        if (currentSettings.showFrame && currentSettings.cornerRadius > 0) {
+          drawRoundedRect(ctx, -drawWidth/2, -drawHeight/2, drawWidth, drawHeight, currentSettings.cornerRadius);
+          ctx.clip();
+          
+          // Draw with padding
+          ctx.drawImage(
+            img, 
+            srcPadding, 0, img.width - (srcPadding * 2), img.height, // Source with padding
+            -drawWidth/2, -drawHeight/2, drawWidth, drawHeight       // Destination
+          );
+          ctx.restore();
+        } else {
+          // Draw with padding
+          ctx.drawImage(
+            img, 
+            srcPadding, 0, img.width - (srcPadding * 2), img.height, // Source with padding
+            -drawWidth/2, -drawHeight/2, drawWidth, drawHeight       // Destination
+          );
+        }
       }
-      
-      // Apply user transformations
-      ctx.save();
-      
-      // Translate to center, then apply transformations, then draw
-      ctx.translate(centerX, centerY);
-      ctx.translate(
-        (canvas.width * currentSettings.positionX) / (100 * dpr),
-        (canvas.height * currentSettings.positionY) / (100 * dpr)
-      );
-      ctx.rotate((currentSettings.rotation * Math.PI) / 180);
-      ctx.scale(currentSettings.scale / 100, currentSettings.scale / 100);
-      
-      // Draw screenshot with rounded corners
-      if (currentSettings.showFrame) {
-        roundedImage(ctx, -drawWidth/2, -drawHeight/2, drawWidth, drawHeight, 20);
-      } else {
-        roundedImage(ctx, -drawWidth/2, -drawHeight/2, drawWidth, drawHeight, 10);
-      }
-      ctx.clip();
-      
-      // Use better drawing method for crisp image
-      ctx.drawImage(img, -drawWidth/2, -drawHeight/2, drawWidth, drawHeight);
-      ctx.restore();
       
       // Draw device frame if enabled
       if (currentSettings.showFrame) {
@@ -407,5 +454,28 @@ function wrapText(ctx, text, maxWidth) {
   lines.push(currentLine); // Push the last line
   return lines;
 }
+
+// Add this helper function to draw a rounded rectangle
+const drawRoundedRect = (ctx, x, y, width, height, radius) => {
+  if (radius === 0) {
+    ctx.rect(x, y, width, height);
+    return;
+  }
+  
+  // Limit radius to half the shorter side
+  const limitedRadius = Math.min(radius, Math.min(width, height) / 2);
+  
+  ctx.beginPath();
+  ctx.moveTo(x + limitedRadius, y);
+  ctx.lineTo(x + width - limitedRadius, y);
+  ctx.arcTo(x + width, y, x + width, y + limitedRadius, limitedRadius);
+  ctx.lineTo(x + width, y + height - limitedRadius);
+  ctx.arcTo(x + width, y + height, x + width - limitedRadius, y + height, limitedRadius);
+  ctx.lineTo(x + limitedRadius, y + height);
+  ctx.arcTo(x, y + height, x, y + height - limitedRadius, limitedRadius);
+  ctx.lineTo(x, y + limitedRadius);
+  ctx.arcTo(x, y, x + limitedRadius, y, limitedRadius);
+  ctx.closePath();
+};
 
 export default React.forwardRef(CanvasPreviewPanel); 

@@ -17,6 +17,7 @@ function App() {
     scale: 90,
     positionX: 0,
     positionY: 0,
+    cornerRadius: 24,
     useGradient: false,
     gradientDirection: 'to right',
     gradientColor1: '#4a6bff',
@@ -39,6 +40,29 @@ function App() {
   
   // Dark mode state
   const [darkMode, setDarkMode] = useState(null);
+
+  // Add this state and effect
+  const [responsiveScale, setResponsiveScale] = useState(0.4); // Starting scale
+
+  useEffect(() => {
+    const updateScale = () => {
+      // For example: larger screens get larger scale
+      const baseScale = previewSettings[activePreviewIndex].scale / 100;
+      const screenWidth = window.innerWidth;
+      
+      if (screenWidth > 1920) {
+        setResponsiveScale(baseScale * 1.5); // 50% larger on big screens
+      } else if (screenWidth > 1440) {
+        setResponsiveScale(baseScale * 1.2); // 20% larger on medium screens
+      } else {
+        setResponsiveScale(baseScale); // Standard scale for smaller screens
+      }
+    };
+    
+    updateScale();
+    window.addEventListener('resize', updateScale);
+    return () => window.removeEventListener('resize', updateScale);
+  }, [previewSettings, activePreviewIndex]);
 
   // Detect System Preference and User Preference
   useEffect(() => {
@@ -180,7 +204,7 @@ function App() {
           <PreviewContainer
             deviceType={deviceType}
             orientation={orientation}
-            scale={0.2}
+            scale={(previewSettings[activePreviewIndex].scale / 100) * 1.5}
             previewSettings={previewSettings}
             activePreviewIndex={activePreviewIndex}
             switchPreview={switchPreview}

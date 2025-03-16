@@ -55,6 +55,7 @@ function EditorPanel({
         scale={previewSettings.scale}
         positionX={previewSettings.positionX}
         positionY={previewSettings.positionY}
+        cornerRadius={previewSettings.cornerRadius}
         updatePreviewSetting={updatePreviewSetting}
         darkMode={darkMode}
       />

@@ -5,6 +5,7 @@ function ImageSettings({
   scale, 
   positionX, 
   positionY, 
+  cornerRadius = 0,
   updatePreviewSetting 
 }) {
   return (
@@ -29,7 +30,7 @@ function ImageSettings({
           type="range" 
           className="editor-range"
           min="50" 
-          max="150" 
+          max="250" 
           value={scale} 
           onChange={(e) => updatePreviewSetting('scale', parseInt(e.target.value))} 
         />
@@ -40,8 +41,8 @@ function ImageSettings({
         <input 
           type="range" 
           className="editor-range"
-          min="-50" 
-          max="50" 
+          min="-100" 
+          max="100" 
           value={positionX} 
           onChange={(e) => updatePreviewSetting('positionX', parseInt(e.target.value))} 
         />
@@ -56,6 +57,18 @@ function ImageSettings({
           max="50" 
           value={positionY} 
           onChange={(e) => updatePreviewSetting('positionY', parseInt(e.target.value))} 
+        />
+      </div>
+      
+      <div className="mb-3">
+        <label className="editor-label">Corner Radius: {cornerRadius}px</label>
+        <input 
+          type="range" 
+          className="editor-range"
+          min="0" 
+          max="50" 
+          value={cornerRadius} 
+          onChange={(e) => updatePreviewSetting('cornerRadius', parseInt(e.target.value))} 
         />
       </div>
     </div>

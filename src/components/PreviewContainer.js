@@ -69,6 +69,27 @@ function PreviewContainer({
     switchPreview(index);
   };
 
+  // Calculate the display scale based on screen width and device dimensions
+  const calculateScale = () => {
+    const maxWidth = window.innerWidth * 0.5; // Half the screen width
+    const deviceWidth = deviceDimensions[deviceType][orientation].width;
+    const scaleToFit = maxWidth / deviceWidth;
+    return Math.min(scaleToFit, scale); // Use the smaller of our two scales
+  };
+  
+  // Update actualScale when relevant props change
+  useEffect(() => {
+    setActualScale(calculateScale());
+    
+    // Also update on window resize
+    const handleResize = () => {
+      setActualScale(calculateScale());
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [deviceType, orientation, scale, deviceDimensions]);
+
   return (
     <div className="flex-3 min-w-[500px] grow bg-white dark:bg-gray-800 p-5 rounded-lg shadow-md flex flex-col items-center transition-colors duration-200">
       <h2 className="text-xl font-semibold mb-4 dark:text-white">{title}</h2>
