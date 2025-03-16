@@ -15,7 +15,8 @@ function PreviewContainer({
   children,
   exportButtons,
   screenshots,
-  currentScreenshotIndex
+  currentScreenshotIndex,
+  darkMode
 }) {
   const carouselRef = useRef(null);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -25,19 +26,22 @@ function PreviewContainer({
   const visiblePanels = useMemo(() => {
     let panels = [];
     
-    // Simple rules:
+    // Show 3 panels at a time with more context
     if (activePreviewIndex === 0) {
-      // When on first preview, show first and second
-      panels = [0, 1].filter(i => i < previewSettings.length);
+      // When on first preview, show first three
+      panels = [0, 1, 2].filter(i => i < previewSettings.length);
     } else if (activePreviewIndex === previewSettings.length - 1) {
-      // When on last preview, show last and previous
-      panels = [activePreviewIndex - 1, activePreviewIndex];
+      // When on last preview, show last three if possible
+      panels = [
+        Math.max(0, activePreviewIndex - 2), 
+        Math.max(0, activePreviewIndex - 1), 
+        activePreviewIndex
+      ];
     } else {
-      // When on middle preview, show current and next
-      panels = [activePreviewIndex, activePreviewIndex + 1];
+      // When on middle preview, show previous, current, and next
+      panels = [activePreviewIndex - 1, activePreviewIndex, activePreviewIndex + 1];
     }
     
-    console.log('Simple panels calculation:', panels, 'for activeIndex:', activePreviewIndex);
     return panels;
   }, [activePreviewIndex, previewSettings.length]);
   
@@ -47,12 +51,26 @@ function PreviewContainer({
     
     setIsAnimating(true);
     
-    // Calculate percentage dynamically based on total panel count
+    // Calculate percentage for 3-panel view
     const percentPerPanel = 100 / previewSettings.length;
-    let position = -percentPerPanel * visiblePanels[0];
     
-    console.log(`Panel calculation: ${percentPerPanel}% per panel with ${previewSettings.length} total panels`);
-    console.log(`Setting position to ${position}% for panel: ${visiblePanels[0]}`);
+    // Adjust position calculation to ensure the active panel is centered
+    // when possible, or aligned properly at the beginning/end
+    let position;
+    
+    if (activePreviewIndex === 0) {
+      // First panel should be at the start
+      position = 0;
+    } else if (activePreviewIndex >= previewSettings.length - 2) {
+      // Last 2 panels should show the end of the carousel
+      position = -percentPerPanel * (previewSettings.length - 3);
+    } else {
+      // Center the active panel
+      position = -percentPerPanel * (activePreviewIndex - 1);
+    }
+    
+    // Ensure position is never positive and never hides all panels
+    position = Math.min(0, Math.max(position, -percentPerPanel * (previewSettings.length - 3)));
     
     carouselRef.current.style.transform = `translateX(${position}%)`;
     
@@ -61,7 +79,7 @@ function PreviewContainer({
     }, 300);
     
     return () => clearTimeout(timer);
-  }, [activePreviewIndex, previewSettings.length, visiblePanels]);
+  }, [activePreviewIndex, previewSettings.length]);
 
   // Wrapped version of switchPreview to add logging
   const handleSwitchPreview = (index) => {
@@ -71,7 +89,7 @@ function PreviewContainer({
 
   // Calculate the display scale based on screen width and device dimensions
   const calculateScale = () => {
-    const maxWidth = window.innerWidth * 0.5; // Half the screen width
+    const maxWidth = window.innerHeight * 0.7; // Half the screen width
     const deviceWidth = deviceDimensions[deviceType][orientation].width;
     const scaleToFit = maxWidth / deviceWidth;
     return Math.min(scaleToFit, scale); // Use the smaller of our two scales
@@ -88,97 +106,126 @@ function PreviewContainer({
     
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [deviceType, orientation, scale, deviceDimensions]);
+  }, [deviceType, orientation, scale, deviceDimensions, calculateScale]);
 
+  // Get device name for display
+  const deviceName = deviceType === 'iphone' ? 'iPhone' : 'iPad';
+  
   return (
-    <div className="flex-3 min-w-[500px] grow bg-white dark:bg-gray-800 p-5 rounded-lg shadow-md flex flex-col items-center transition-colors duration-200">
-      <h2 className="text-xl font-semibold mb-4 dark:text-white">{title}</h2>
-      
-      <div className="flex gap-2 mb-4">
-        {previewSettings.map((_, index) => (
-          <button 
-            key={index}
-            className={`w-8 h-8 rounded-full flex items-center justify-center ${activePreviewIndex === index ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
-            onClick={() => handleSwitchPreview(index)}
-          >
-            {index + 1}
-          </button>
-        ))}
-        
-        {previewSettings.length < 6 && (
-          <button 
-            className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center"
-            onClick={addPreview}
-          >
-            +
-          </button>
-        )}
-        
-        {previewSettings.length > 1 && (
-          <button 
-            className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center"
-            onClick={removePreview}
-          >
-            -
-          </button>
-        )}
-      </div>
-      
-      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-        Size: {deviceDimensions[deviceType][orientation].width} × {deviceDimensions[deviceType][orientation].height}px
-        {actualScale !== 1 && ` (Scaled ${Math.round(actualScale * 100)}% for display)`}
-      </p>
-      
-      {previewSettings.length > 1 ? (
-        <div className="w-full mb-4 overflow-hidden">
-          <div
-            ref={carouselRef}
-            className={`flex w-full transition-transform ${isAnimating ? 'duration-300 ease-in-out' : ''}`}
-            style={{ 
-              width: `${previewSettings.length * 50}%`
-            }}
-          >
+    <div className="flex-1 bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden flex flex-col">
+      {/* Compact header with row layout */}
+      <div className="px-4 py-2 bg-gray-50 dark:bg-gray-700 flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 dark:border-gray-600">
+        <div className="flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-white">{deviceName} • {orientation}</h3>
+          
+          {/* Preview tabs in the same row as the title */}
+          <div className="preview-tabs flex gap-1 ml-4">
             {previewSettings.map((_, index) => (
-              <div 
-                key={`preview-${index}`}
-                className={`w-1/2 px-2 transition-all duration-300
-                           ${index === activePreviewIndex ? '' : 'opacity-70 hover:opacity-100 cursor-pointer'}
-                           ${visiblePanels.includes(index) ? '' : 'opacity-0'}`}
-                onClick={index !== activePreviewIndex ? () => handleSwitchPreview(index) : undefined}
+              <button
+                key={index}
+                className={`px-2 py-1 text-xs rounded ${
+                  activePreviewIndex === index
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500'
+                }`}
+                onClick={() => handleSwitchPreview(index)}
               >
-                <div className="relative flex items-center justify-center">
-                  <CanvasPreviewPanel
-                    id={`canvas-preview-${index}`}
-                    deviceType={deviceType}
-                    orientation={orientation}
-                    screenshots={screenshots}
-                    currentScreenshotIndex={currentScreenshotIndex}
-                    previewSettings={previewSettings}
-                    activePreviewIndex={index}
-                    deviceDimensions={deviceDimensions}
-                    switchPreview={switchPreview}
-                    onScaleChange={index === activePreviewIndex ? setActualScale : undefined}
-                    ref={index === activePreviewIndex ? node => window.activePreviewCanvas = node : undefined}
-                  />
-                  {index !== activePreviewIndex && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="bg-white bg-opacity-80 rounded-full w-8 h-8 flex items-center justify-center text-lg font-bold">
-                        {index + 1}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
+                {index + 1}
+              </button>
             ))}
           </div>
+          <div className="flex">
+            <button
+              className="p-1 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+              onClick={addPreview}
+              title="Add preview"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+              </svg>
+            </button>
+            <button
+              className="p-1 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+              onClick={removePreview}
+              title="Remove preview"
+              disabled={previewSettings.length <= 1}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+              </svg>
+            </button>
+          </div>
         </div>
-      ) : (
-        <div className="mb-4">
-          {children}
+        
+        {/* Controls moved to the right side */}
+        <div className="flex items-center gap-2">          
+          {/* Export buttons as a dropdown to save space */}
+          <div className="relative group">
+            <button className="bg-blue-600 text-white py-1 px-3 text-sm rounded-lg hover:bg-blue-700 transition-colors">
+              Export Options ▾
+            </button>
+            <div className="absolute right-0 mt-1 w-48 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-2 hidden group-hover:block z-10">
+              <div className="flex flex-col gap-2">
+                {exportButtons}
+              </div>
+            </div>
+          </div>
         </div>
-      )}
+      </div>
       
-      {exportButtons}
+      {/* Main content area with more vertical space */}
+      <div className="flex-1 overflow-hidden flex items-center justify-center">
+        {previewSettings.length > 1 ? (
+          <div className="w-full h-full overflow-hidden">
+            <div
+              ref={carouselRef}
+              className={`flex w-full h-full transition-transform ${isAnimating ? 'duration-300 ease-in-out' : ''}`}
+              style={{ 
+                width: `${previewSettings.length * 33.33}%` // Each panel is 1/3 of viewport
+              }}
+            >
+              {previewSettings.map((settings, index) => (
+                <div 
+                  key={`preview-${index}`}
+                  className={`w-1/3 h-full px-2 transition-all duration-300
+                             ${index === activePreviewIndex ? '' : 'opacity-80 hover:opacity-100 cursor-pointer'}
+                             ${visiblePanels.includes(index) ? '' : 'opacity-0'}`}
+                  onClick={index !== activePreviewIndex ? () => handleSwitchPreview(index) : undefined}
+                >
+                  <div className="relative flex items-center justify-center h-full">
+                    <CanvasPreviewPanel
+                      id={`canvas-preview-${index}`}
+                      key={`canvas-${index}`}
+                      deviceType={deviceType}
+                      orientation={orientation}
+                      screenshots={screenshots}
+                      currentScreenshotIndex={currentScreenshotIndex}
+                      previewSettings={previewSettings}
+                      activePreviewIndex={index}
+                      deviceDimensions={deviceDimensions}
+                      shouldUpdate={index === activePreviewIndex}
+                      switchPreview={switchPreview}
+                      onScaleChange={index === activePreviewIndex ? setActualScale : undefined}
+                      ref={index === activePreviewIndex ? node => window.activePreviewCanvas = node : undefined}
+                    />
+                    {index !== activePreviewIndex && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="bg-white bg-opacity-80 rounded-full w-8 h-8 flex items-center justify-center text-lg font-bold">
+                          {index + 1}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="h-full flex items-center justify-center">
+            {children}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

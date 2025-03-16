@@ -1,8 +1,8 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import iPhoneFramePortrait from '../assets/frames/iPhone 16 - Black - Portrait.png';
 
 // This component only handles canvas rendering logic - no UI navigation
-function CanvasPreviewPanel({
+function CanvasPreviewPanelBase({
   deviceType,
   orientation,
   screenshots,
@@ -10,8 +10,8 @@ function CanvasPreviewPanel({
   previewSettings,
   activePreviewIndex,
   deviceDimensions,
-  switchPreview,
   onScaleChange,
+  shouldUpdate,
   id
 }, ref) {
   const canvasRef = useRef(null);
@@ -25,13 +25,13 @@ function CanvasPreviewPanel({
       
       // Get viewport dimensions
       const viewportHeight = window.innerHeight;
-      const containerHeight = viewportHeight * 0.6; // Use 60% of viewport height
+      const containerHeight = viewportHeight * 0.75; // Use 60% of viewport height
       
       // Calculate scale based on available height
       const scaleFactor = containerHeight / height;
       
       // Add a maximum scale to prevent huge previews on large screens
-      const maxScale = 0.35; // Maximum 35% of original size
+      const maxScale = 0.55; // Maximum 35% of original size
       
       return Math.min(scaleFactor, maxScale);
     }
@@ -71,13 +71,26 @@ function CanvasPreviewPanel({
     preloadFrame.src = iPhoneFramePortrait;
   }, []);
   
+  // Only update when THIS specific preview's settings change
+  const currentSettings = previewSettings[activePreviewIndex];
+  
+  // Use memo to cache the current settings object
+  const memoizedSettings = useMemo(() => currentSettings, [
+    currentSettings.rotation,
+    currentSettings.scale,
+    currentSettings.positionX,
+    currentSettings.positionY,
+    currentSettings.cornerRadius,
+    currentSettings.showFrame,
+    // Add other relevant properties
+  ]);
+  
   // Render the preview to canvas 
   useEffect(() => {
     if (!canvasRef.current) return;
     
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
-    const currentSettings = previewSettings[activePreviewIndex];
     const screenshot = screenshots[currentScreenshotIndex];
     
     // Clear the canvas
@@ -343,48 +356,31 @@ function CanvasPreviewPanel({
   ]);
 
   const exportCanvas = () => {
-    if (!canvasRef.current) return;
+    if (!canvasRef.current) return Promise.reject(new Error('Canvas not available'));
     
-    setIsExporting(true);
-    try {
-      const link = document.createElement('a');
-      link.download = `app-screenshot-${activePreviewIndex + 1}.png`;
-      link.href = canvasRef.current.toDataURL('image/png');
-      link.click();
-    } catch (err) {
-      console.error('Error exporting canvas:', err);
-    }
-    setIsExporting(false);
-  };
-
-  const exportAllScreenshots = async () => {
-    if (!canvasRef.current) return;
-    
-    setIsExporting(true);
-    
-    for (let i = 0; i < previewSettings.length; i++) {
-      // Switch to the preview, give render cycle time to complete
-      switchPreview(i);
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Export the canvas
-      const link = document.createElement('a');
-      link.download = `app-screenshot-${i + 1}.png`;
-      link.href = canvasRef.current.toDataURL('image/png');
-      link.click();
-      
-      // Give a bit more time before the next export
-      await new Promise(resolve => setTimeout(resolve, 200));
-    }
-    
-    setIsExporting(false);
+    return new Promise((resolve) => {
+      setIsExporting(true);
+      try {
+        const link = document.createElement('a');
+        link.download = `app-screenshot-${activePreviewIndex + 1}.png`;
+        link.href = canvasRef.current.toDataURL('image/png');
+        link.click();
+        
+        setTimeout(() => {
+          setIsExporting(false);
+          resolve();
+        }, 100);
+      } catch (err) {
+        console.error('Error exporting canvas:', err);
+        setIsExporting(false);
+        resolve(); // Resolve anyway to continue with other exports
+      }
+    });
   };
 
   // Export methods that can be called from outside
-  // Now expose these methods to the parent through the ref
   React.useImperativeHandle(ref, () => ({
-    exportCanvas,
-    exportAllScreenshots
+    exportCanvas
   }));
 
   return (
@@ -403,20 +399,26 @@ function CanvasPreviewPanel({
   );
 }
 
-// Helper function to draw a rounded rectangle
-function roundedImage(ctx, x, y, width, height, radius) {
-  ctx.beginPath();
-  ctx.moveTo(x + radius, y);
-  ctx.lineTo(x + width - radius, y);
-  ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-  ctx.lineTo(x + width, y + height - radius);
-  ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-  ctx.lineTo(x + radius, y + height);
-  ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-  ctx.lineTo(x, y + radius);
-  ctx.quadraticCurveTo(x, y, x + radius, y);
-  ctx.closePath();
-}
+// First apply forwardRef, then apply memo
+const CanvasPreviewPanel = React.memo(
+  React.forwardRef(CanvasPreviewPanelBase),
+  (prevProps, nextProps) => {
+    // Only re-render if this specific panel needs to update
+    if (!prevProps.shouldUpdate && !nextProps.shouldUpdate) {
+      return true; // Skip update if not active panel
+    }
+    
+    // Otherwise do normal prop comparison
+    return (
+      prevProps.deviceType === nextProps.deviceType &&
+      prevProps.orientation === nextProps.orientation &&
+      prevProps.currentScreenshotIndex === nextProps.currentScreenshotIndex &&
+      prevProps.activePreviewIndex === nextProps.activePreviewIndex &&
+      JSON.stringify(prevProps.previewSettings[prevProps.activePreviewIndex]) === 
+      JSON.stringify(nextProps.previewSettings[nextProps.activePreviewIndex])
+    );
+  }
+);
 
 // Helper function to create a linear gradient based on direction
 function createLinearGradient(ctx, direction, width, height) {
@@ -478,4 +480,4 @@ const drawRoundedRect = (ctx, x, y, width, height, radius) => {
   ctx.closePath();
 };
 
-export default React.forwardRef(CanvasPreviewPanel); 
+export default CanvasPreviewPanel; 
