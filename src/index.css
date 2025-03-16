@@ -1,5 +1,20 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-primary: #4a6bff;
+  --color-secondary: #45caff;
+  --border-radius: 8px;
+}
+
+@layer theme {
+  .dark {
+    --color-primary: #6b8aff;
+    --color-secondary: #65daff;
+  }
+}
+
 /* Custom styles that might be needed */
 @layer components {
   .control-group {
@@ -56,11 +71,11 @@
 
 /* Add these dark mode utility classes to your global CSS */
 .editor-section {
-  @apply bg-gray-50 dark:bg-gray-700 p-3 rounded-lg;
+  @apply bg-gray-50 bg-gray-700:dark p-3 rounded-lg;
 }
 
 .editor-title {
-  @apply font-semibold mb-3 dark:text-white;
+  @apply font-semibold mb-3 text-white:dark;
 }
 
 .editor-label {
