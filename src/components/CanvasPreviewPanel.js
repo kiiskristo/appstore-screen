@@ -17,6 +17,7 @@ function CanvasPreviewPanelBase({
   const canvasRef = useRef(null);
   const [scale, setScale] = useState(0.2);
   const [isExporting, setIsExporting] = useState(false);
+  const [fontsLoaded, setFontsLoaded] = useState(false);
   
   // Use a callback for scale calculation to reuse in multiple places
   const calculateScale = useCallback(() => {
@@ -84,6 +85,21 @@ function CanvasPreviewPanelBase({
     currentSettings.showFrame,
     // Add other relevant properties
   ]);
+  
+  // Add this effect to detect when fonts are loaded
+  useEffect(() => {
+    // Simple check if document fonts API is available
+    if ('fonts' in document) {
+      document.fonts.ready.then(() => {
+        console.log('All fonts loaded and ready for canvas use');
+        setFontsLoaded(true);
+      });
+    } else {
+      // Fallback for browsers without the fonts API
+      // Give fonts some time to load
+      setTimeout(() => setFontsLoaded(true), 500);
+    }
+  }, []);
   
   // Render the preview to canvas 
   useEffect(() => {
@@ -235,11 +251,7 @@ function CanvasPreviewPanelBase({
       // Draw device frame if enabled
       if (currentSettings.showFrame) {
         const frameImg = new Image();
-        console.log('Loading frame:', iPhoneFramePortrait);
-        
         frameImg.onload = () => {
-          console.log('Frame loaded successfully');
-          
           ctx.save();
           ctx.translate(centerX, centerY);
           ctx.translate(
@@ -276,7 +288,7 @@ function CanvasPreviewPanelBase({
       }
       
       // Draw text if enabled
-      if (currentSettings.showText) {
+      if (fontsLoaded && currentSettings.showText) {
         ctx.save();
         
         // Set text styles with proper font matching
@@ -314,7 +326,7 @@ function CanvasPreviewPanelBase({
         ctx.shadowOffsetY = 2;
         
         // Draw title with wrapping
-        ctx.font = `${titleFontSize}px ${currentSettings.titleFontFamily}`;
+        ctx.font = `${currentSettings.titleFontWeight} ${titleFontSize}px ${currentSettings.titleFontFamily}`;
         ctx.fillStyle = currentSettings.textColor;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
@@ -329,7 +341,7 @@ function CanvasPreviewPanelBase({
         });
         
         // Draw description with wrapping
-        ctx.font = `${descriptionFontSize}px ${currentSettings.descriptionFontFamily}`;
+        ctx.font = `${currentSettings.descriptionFontWeight} ${descriptionFontSize}px ${currentSettings.descriptionFontFamily}`;
         const descMaxWidth = canvas.width * 0.8 / dpr; // 80% of canvas width
         const descLines = wrapText(ctx, description, descMaxWidth);
         
@@ -352,7 +364,8 @@ function CanvasPreviewPanelBase({
     deviceType,
     orientation,
     scale,
-    deviceDimensions
+    deviceDimensions,
+    fontsLoaded
   ]);
 
   const exportCanvas = () => {

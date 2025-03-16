@@ -36,7 +36,9 @@ function App() {
     textPositionX: 50,
     textPositionY: 80,
     showFrame: true,
-    frameColor: 'black'
+    frameColor: 'black',
+    titleFontWeight: 'bold',
+    descriptionFontWeight: 'normal'
   }]);
   const [activePreviewIndex, setActivePreviewIndex] = useState(0);
   
@@ -90,6 +92,7 @@ function App() {
 
   // Update settings for current preview
   const updatePreviewSetting = (key, value) => {
+    console.log('Updating preview setting:', key, value);
     setPreviewSettings(prevSettings => {
       const newSettings = [...prevSettings];
       newSettings[activePreviewIndex] = {

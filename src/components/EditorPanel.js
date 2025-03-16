@@ -66,8 +66,10 @@ function EditorPanel({
         textDescription={previewSettings.textDescription}
         titleFontSize={previewSettings.titleFontSize}
         titleFontFamily={previewSettings.titleFontFamily}
+        titleFontWeight={previewSettings.titleFontWeight}
         descriptionFontSize={previewSettings.descriptionFontSize}
         descriptionFontFamily={previewSettings.descriptionFontFamily}
+        descriptionFontWeight={previewSettings.descriptionFontWeight}
         textColor={previewSettings.textColor}
         textPosition={previewSettings.textPosition}
         textPositionX={previewSettings.textPositionX}

@@ -6,14 +6,49 @@ function TextOverlaySettings({
   textDescription, 
   titleFontSize, 
   titleFontFamily, 
+  titleFontWeight,
   descriptionFontSize, 
   descriptionFontFamily, 
+  descriptionFontWeight,
   textColor, 
   textPosition, 
   textPositionX, 
   textPositionY, 
   updatePreviewSetting 
 }) {
+  // Add this font list to your TextOverlaySettings component
+  const fontFamilies = [
+    // Sans-serif fonts (clean, modern)
+    { value: "'Segoe UI', sans-serif", label: "Segoe UI" },
+    { value: "'Helvetica Neue', Helvetica, Arial, sans-serif", label: "Helvetica Neue" },
+    { value: "'SF Pro Display', sans-serif", label: "SF Pro Display" },
+    { value: "'Roboto', sans-serif", label: "Roboto" },
+    { value: "'Montserrat', sans-serif", label: "Montserrat" },
+    { value: "'Open Sans', sans-serif", label: "Open Sans" },
+    { value: "'Poppins', sans-serif", label: "Poppins" },
+    
+    // Serif fonts (traditional, professional)
+    { value: "'Georgia', serif", label: "Georgia" },
+    { value: "'Playfair Display', serif", label: "Playfair Display" },
+    { value: "'Merriweather', serif", label: "Merriweather" },
+    
+    // Display fonts (stylish, unique)
+    { value: "'Bebas Neue', cursive", label: "Bebas Neue" },
+    { value: "'Pacifico', cursive", label: "Pacifico" },
+    
+    // Monospace (technical, code-like)
+    { value: "'JetBrains Mono', monospace", label: "JetBrains Mono" },
+    { value: "'Fira Code', monospace", label: "Fira Code" }
+  ];
+
+  // Add this array for font weight options below your fontFamilies array
+  const fontWeights = [
+    { value: '100', label: 'Light' },
+    { value: '400', label: 'Regular' },
+    { value: '500', label: 'Bold' },
+    { value: '700', label: 'Extra Bold' },
+  ];
+
   return (
     <div className="editor-section">
       <h3 className="editor-title">Text Overlay</h3>
@@ -55,6 +90,45 @@ function TextOverlaySettings({
             />
           </div>
           
+          {/* Font Family Selection */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+              Title Font
+            </label>
+            <select
+              value={titleFontFamily || "'Segoe UI', sans-serif"}
+              onChange={(e) => updatePreviewSetting('titleFontFamily', e.target.value)}
+              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-white"
+            >
+              {fontFamilies.map((font) => (
+                <option key={font.label} value={font.value} style={{ fontFamily: font.value }}>
+                  {font.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          {/* Title Font Weight */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+              Title Weight
+            </label>
+            <select
+              value={titleFontWeight || '700'}
+              onChange={(e) => updatePreviewSetting('titleFontWeight', e.target.value)}
+              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-white"
+            >
+              {fontWeights.map((weight) => (
+                <option 
+                  key={weight.value} 
+                  value={weight.value}
+                >
+                  {weight.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          
           {/* Description Settings */}
           <div className="mb-3">
             <label className="editor-label">Description</label>
@@ -76,6 +150,45 @@ function TextOverlaySettings({
               value={descriptionFontSize} 
               onChange={(e) => updatePreviewSetting('descriptionFontSize', parseInt(e.target.value))} 
             />
+          </div>
+          
+          {/* Description Font Family */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+              Description Font
+            </label>
+            <select
+              value={descriptionFontFamily || "'Segoe UI', sans-serif"}
+              onChange={(e) => updatePreviewSetting('descriptionFontFamily', e.target.value)}
+              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-white"
+            >
+              {fontFamilies.map((font) => (
+                <option key={font.label} value={font.value}>
+                  {font.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          {/* Description Font Weight */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+              Description Weight
+            </label>
+            <select
+              value={descriptionFontWeight || '400'}
+              onChange={(e) => updatePreviewSetting('descriptionFontWeight', e.target.value)}
+              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-white"
+            >
+              {fontWeights.map((weight) => (
+                <option 
+                  key={weight.value} 
+                  value={weight.value}
+                >
+                  {weight.label}
+                </option>
+              ))}
+            </select>
           </div>
           
           {/* Text Color */}
