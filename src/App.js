@@ -225,10 +225,6 @@ function App() {
           </PreviewContainer>
         </div>
       </div>
-
-      <div className="bg-blue-500 text-white p-4 m-4 rounded-lg">
-        This should be a blue box with white text if Tailwind is working correctly.
-      </div>
     </div>
   );
 }

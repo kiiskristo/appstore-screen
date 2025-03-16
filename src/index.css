@@ -1,19 +1,6 @@
-@import "tailwindcss/tailwind.css";
-
-@custom-variant dark (&:where(.dark, .dark *));
-
-@theme {
-  --color-primary: #4a6bff;
-  --color-secondary: #45caff;
-  --border-radius: 8px;
-}
-
-@layer theme {
-  .dark {
-    --color-primary: #6b8aff;
-    --color-secondary: #65daff;
-  }
-}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 /* Custom styles that might be needed */
 @layer components {
@@ -71,28 +58,28 @@
 
 /* Add these dark mode utility classes to your global CSS */
 .editor-section {
-  @apply bg-gray-50 bg-gray-700:dark p-3 rounded-lg;
+  @apply bg-gray-50 dark:bg-gray-700 p-3 rounded-lg;
 }
 
 .editor-title {
-  @apply font-semibold mb-3 text-white:dark;
+  @apply font-semibold mb-3 dark:text-white;
 }
 
 .editor-label {
-  @apply block text-sm font-medium text-gray-700 text-gray-200:dark mb-1;
+  @apply block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1;
 }
 
 .editor-input {
-  @apply w-full p-2 border border-gray-300 border-gray-600:dark rounded-md 
-         bg-white bg-gray-800:dark text-gray-700 text-gray-200:dark;
+  @apply w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md 
+         bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200;
 }
 
 .editor-checkbox-label {
-  @apply ml-2 text-gray-700 text-gray-200:dark;
+  @apply ml-2 text-gray-700 dark:text-gray-200;
 }
 
 .editor-color-picker {
-  @apply p-0 w-full h-8 cursor-pointer rounded-md border border-gray-300 border-gray-600:dark;
+  @apply p-0 w-full h-8 cursor-pointer rounded-md border border-gray-300 dark:border-gray-600;
 }
 
 .editor-range {
