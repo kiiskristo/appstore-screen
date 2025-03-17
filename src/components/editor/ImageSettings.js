@@ -10,7 +10,7 @@ function ImageSettings({
 }) {
   return (
     <div className="editor-section">
-      <h3 className="editor-title">Image Adjustments</h3>
+      <h3 className="editor-title">Screenshot Adjustments</h3>
       
       <div className="mb-3">
         <label className="editor-label">Rotation: {rotation}°</label>

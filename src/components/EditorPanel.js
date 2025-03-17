@@ -33,6 +33,15 @@ function EditorPanel({
         darkMode={darkMode}
       />
       
+      <BackgroundSettings 
+        useGradient={previewSettings.useGradient}
+        gradientDirection={previewSettings.gradientDirection}
+        gradientColor1={previewSettings.gradientColor1}
+        gradientColor2={previewSettings.gradientColor2}
+        updatePreviewSetting={updatePreviewSetting}
+        darkMode={darkMode}
+      />
+
       <ScreenshotUploader 
         screenshots={screenshots}
         setScreenshots={setScreenshots}
@@ -40,12 +49,10 @@ function EditorPanel({
         setCurrentScreenshotIndex={setCurrentScreenshotIndex}
         darkMode={darkMode}
       />
-      
-      <BackgroundSettings 
-        useGradient={previewSettings.useGradient}
-        gradientDirection={previewSettings.gradientDirection}
-        gradientColor1={previewSettings.gradientColor1}
-        gradientColor2={previewSettings.gradientColor2}
+
+      <DeviceFrameSettings 
+        showFrame={previewSettings.showFrame}
+        frameColor={previewSettings.frameColor}
         updatePreviewSetting={updatePreviewSetting}
         darkMode={darkMode}
       />
@@ -75,13 +82,6 @@ function EditorPanel({
         textPositionX={previewSettings.textPositionX}
         textPositionY={previewSettings.textPositionY}
         textSpacing={previewSettings.textSpacing}
-        updatePreviewSetting={updatePreviewSetting}
-        darkMode={darkMode}
-      />
-      
-      <DeviceFrameSettings 
-        showFrame={previewSettings.showFrame}
-        frameColor={previewSettings.frameColor}
         updatePreviewSetting={updatePreviewSetting}
         darkMode={darkMode}
       />

@@ -29,7 +29,7 @@ A web-based tool for creating professional device mockups of your app screenshot
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/app-screenshot-mockup.git
+   git clone https://github.com/kiiskristo/appstore-screen.git
    cd app-screenshot-mockup
    ```
 
@@ -87,7 +87,12 @@ A web-based tool for creating professional device mockups of your app screenshot
 
 ## 📸 Screenshots
 
-(Coming soon)
+![App Screenshot](./Screenshot.png)
+*App mockup tool in action, showing iPhone device frame and customization options*
+
+## 🎮 Demo
+
+**[Try the live demo here](https://kiiskristo.github.io/appstore-screen/)**
 
 ## 🤝 Contributing
 
