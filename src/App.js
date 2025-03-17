@@ -55,8 +55,15 @@ function App() {
     const indexValue = parseInt(index, 10);
     console.log("Setting screenshot index to:", indexValue, "Type:", typeof indexValue);
     
-    // Only update if it's a valid index (including 0)
-    if (indexValue >= 0 && indexValue < screenshots.length) {
+    // Get the currently active screenshot index
+    const currentIndex = previewSettings[activePreviewIndex]?.screenshotIndex;
+    
+    // If clicking the same screenshot, toggle selection (deselect)
+    if (currentIndex === indexValue) {
+      updatePreviewSetting('screenshotIndex', -1); // Deselect
+    }
+    // Otherwise select the new screenshot if valid
+    else if (indexValue >= 0 && indexValue < screenshots.length) {
       updatePreviewSetting('screenshotIndex', indexValue);
     } else {
       console.warn("Invalid screenshot index:", index);
