@@ -110,13 +110,18 @@ function CanvasPreviewPanelBase({
     
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
-    const screenshot = screenshots[currentScreenshotIndex];
+    
+    const currentScreenshot = currentScreenshotIndex !== null && 
+                            currentScreenshotIndex !== undefined && 
+                            screenshots[currentScreenshotIndex];
     
     // Clear the canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
     // Skip if no screenshot
-    if (!screenshot) return;
+    if (!currentScreenshot) {
+      return;
+    }
     
     // Get device dimensions
     const { width: deviceWidth, height: deviceHeight } = deviceDimensions[deviceType][orientation];
@@ -390,7 +395,7 @@ function CanvasPreviewPanelBase({
         ctx.restore();
       }
     };
-    img.src = screenshot.src;
+    img.src = currentScreenshot.src;
   }, [
     activePreviewIndex, 
     previewSettings, 
@@ -451,20 +456,29 @@ function CanvasPreviewPanelBase({
 const CanvasPreviewPanel = React.memo(
   React.forwardRef(CanvasPreviewPanelBase),
   (prevProps, nextProps) => {
-    // Only re-render if this specific panel needs to update
-    if (!prevProps.shouldUpdate && !nextProps.shouldUpdate) {
-      return true; // Skip update if not active panel
+    // Only re-render when:
+    // 1. This panel is the active one OR
+    // 2. This panel's specific settings changed
+    if (!nextProps.shouldUpdate && prevProps.shouldUpdate === nextProps.shouldUpdate) {
+      return true; // don't re-render inactive panels unless they become active
     }
     
-    // Otherwise do normal prop comparison
-    return (
-      prevProps.deviceType === nextProps.deviceType &&
-      prevProps.orientation === nextProps.orientation &&
-      prevProps.currentScreenshotIndex === nextProps.currentScreenshotIndex &&
-      prevProps.activePreviewIndex === nextProps.activePreviewIndex &&
-      JSON.stringify(prevProps.previewSettings[prevProps.activePreviewIndex]) === 
-      JSON.stringify(nextProps.previewSettings[nextProps.activePreviewIndex])
-    );
+    // For active panel, check if relevant props changed
+    if (prevProps.currentScreenshotIndex !== nextProps.currentScreenshotIndex) {
+      return false; // re-render if screenshot changed
+    }
+    
+    // Get this panel's specific settings
+    const prevSettings = prevProps.previewSettings[prevProps.activePreviewIndex];
+    const nextSettings = nextProps.previewSettings[nextProps.activePreviewIndex];
+    
+    // Deep compare only this panel's settings
+    if (JSON.stringify(prevSettings) !== JSON.stringify(nextSettings)) {
+      return false; // re-render if settings changed
+    }
+    
+    // Don't re-render if nothing important changed
+    return true;
   }
 );
 
@@ -528,4 +542,5 @@ const drawRoundedRect = (ctx, x, y, width, height, radius) => {
   ctx.closePath();
 };
 
+// Export the memoized component instead
 export default CanvasPreviewPanel; 

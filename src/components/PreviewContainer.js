@@ -83,7 +83,6 @@ function PreviewContainer({
 
   // Wrapped version of switchPreview to add logging
   const handleSwitchPreview = (index) => {
-    console.log('Switching to preview:', index, 'from:', activePreviewIndex);
     switchPreview(index);
   };
 
@@ -199,7 +198,7 @@ function PreviewContainer({
                       deviceType={deviceType}
                       orientation={orientation}
                       screenshots={screenshots}
-                      currentScreenshotIndex={currentScreenshotIndex}
+                      currentScreenshotIndex={settings.screenshotIndex ?? -1}
                       previewSettings={previewSettings}
                       activePreviewIndex={index}
                       deviceDimensions={deviceDimensions}

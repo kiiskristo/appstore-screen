@@ -206,12 +206,10 @@ class StorageService {
       const store = tx.objectStore('projects');
       
       return new Promise((resolve, reject) => {
-        console.log("Making request to get project:", projectId);
         const request = store.get(projectId);
         
         request.onsuccess = () => {
           const result = request.result;
-          console.log("Project data retrieved:", result);
           resolve(result?.data || null);
         };
         

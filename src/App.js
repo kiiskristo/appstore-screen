@@ -5,80 +5,83 @@ import CanvasPreviewPanel from './components/CanvasPreviewPanel';
 import PreviewContainer from './components/PreviewContainer';
 import ProjectManager from './components/ProjectManager';
 import storageService from './services/StorageService';
+import useProjectManagement from './hooks/useProjectManagement';
 
 function App() {
-  // Global state for the application
-  const [deviceType, setDeviceType] = useState('iphone');
-  const [orientation, setOrientation] = useState('portrait');
-  const [screenshots, setScreenshots] = useState([]);
-  const [currentScreenshotIndex, setCurrentScreenshotIndex] = useState(-1);
-  const [previewSettings, setPreviewSettings] = useState([{
-    screenshotIndex: -1,
-    orientation: 'portrait',
-    rotation: 0,
-    scale: 90,
-    positionX: 0,
-    positionY: 0,
-    cornerRadius: 24,
-    useGradient: false,
-    gradientDirection: 'to right',
-    gradientColor1: '#4a6bff',
-    gradientColor2: '#45caff',
-    showText: false,
-    textTitle: 'Your App Name',
-    textDescription: 'The perfect solution for your needs',
-    titleFontSize: 24,
-    titleFontFamily: "'Segoe UI', sans-serif",
-    descriptionFontSize: 16,
-    descriptionFontFamily: "'Segoe UI', sans-serif",
-    textColor: '#ffffff',
-    textPosition: 'bottom',
-    textPositionX: 50,
-    textPositionY: 80,
-    textSpacing: 20,
-    showFrame: true,
-    frameColor: 'black',
-    titleFontWeight: 'bold',
-    descriptionFontWeight: 'normal'
-  }]);
+  // Use the custom hook to handle project logic
+  const { 
+    currentProject, 
+    setCurrentProject,
+    projectData,
+    setProjectData,
+    hasUnsavedChanges,
+    saveProject
+  } = useProjectManagement();
+  
+  // Extract most state from project data
+  const { 
+    screenshots, 
+    previewSettings, 
+    deviceType, 
+    orientation
+  } = projectData;
+  
+  // Keep activePreviewIndex as local UI state
   const [activePreviewIndex, setActivePreviewIndex] = useState(0);
   
-  // Dark mode state
-  const [darkMode, setDarkMode] = useState(null);
-
-  // Add new state to the App component
-  const [currentProject, setCurrentProject] = useState(null);
-
-  // Add this state to track changes
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [lastSavedState, setLastSavedState] = useState(null);
-
-  // Detect System Preference and User Preference
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const userPreference = localStorage.getItem('theme');
-      const systemPreference = window.matchMedia('(prefers-color-scheme: dark)').matches;
-
-      if (userPreference === 'dark' || (!userPreference && systemPreference)) {
-        document.documentElement.classList.add('dark');
-        setDarkMode(true);
-      } else {
-        document.documentElement.classList.remove('dark');
-        setDarkMode(false);
-      }
-    }
-  }, []);
-
-  // Toggle dark mode and save preference
-  const toggleDarkMode = () => {
-    setDarkMode((prev) => {
-      const newMode = !prev;
-      localStorage.setItem('theme', newMode ? 'dark' : 'light');
-      document.documentElement.classList.toggle('dark', newMode);
-      return newMode;
-    });
+  // Create update methods
+  const updateProjectData = (key, value) => {
+    setProjectData(prev => ({
+      ...prev,
+      [key]: value
+    }));
   };
-
+  
+  // Dark mode state
+  const [darkMode, setDarkMode] = useState(
+    localStorage.getItem('theme') === 'dark' || 
+    window.matchMedia('(prefers-color-scheme: dark)').matches
+  );
+  
+  // Effect to apply dark mode
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', darkMode);
+    localStorage.setItem('theme', darkMode ? 'dark' : 'light');
+  }, [darkMode]);
+  
+  // Handle UI updates
+  const handleScreenshotSelect = (index) => {
+    // Make sure index is treated as a number
+    const indexValue = parseInt(index, 10);
+    console.log("Setting screenshot index to:", indexValue, "Type:", typeof indexValue);
+    
+    // Only update if it's a valid index (including 0)
+    if (indexValue >= 0 && indexValue < screenshots.length) {
+      updatePreviewSetting('screenshotIndex', indexValue);
+    } else {
+      console.warn("Invalid screenshot index:", index);
+    }
+  };
+  
+  // Component cleanup
+  useEffect(() => {
+    return () => {
+      // Clean up any blob URLs when component unmounts
+      screenshots.forEach(screenshot => {
+        if (screenshot.blobUrl) {
+          URL.revokeObjectURL(screenshot.src);
+        }
+      });
+    };
+  }, [screenshots]);
+  
+  // Quick save project handler
+  const handleQuickSave = async () => {
+    const projectId = currentProject?.id || Date.now().toString();
+    const projectName = currentProject?.name || "Untitled Project";
+    return await saveProject(projectId, projectName);
+  };
+  
   // Device dimensions data
   const deviceDimensions = {
     iphone: {
@@ -94,26 +97,22 @@ function App() {
   // Update settings for current preview
   const updatePreviewSetting = (key, value) => {
     console.log('Updating preview setting:', key, value);
-    setPreviewSettings(prevSettings => {
-      const newSettings = [...prevSettings];
-      newSettings[activePreviewIndex] = {
-        ...newSettings[activePreviewIndex],
-        [key]: value
-      };
-      return newSettings;
-    });
+    setProjectData(prev => ({
+      ...prev,
+      previewSettings: prev.previewSettings.map((setting, index) =>
+        index === activePreviewIndex ? { ...setting, [key]: value } : setting
+      )
+    }));
   };
 
   // Handle multiple settings updates at once
   const updateMultipleSettings = (settingsObject) => {
-    setPreviewSettings(prevSettings => {
-      const newSettings = [...prevSettings];
-      newSettings[activePreviewIndex] = {
-        ...newSettings[activePreviewIndex],
-        ...settingsObject
-      };
-      return newSettings;
-    });
+    setProjectData(prev => ({
+      ...prev,
+      previewSettings: prev.previewSettings.map((setting, index) =>
+        index === activePreviewIndex ? { ...setting, ...settingsObject } : setting
+      )
+    }));
   };
 
   // Add new preview
@@ -123,12 +122,12 @@ function App() {
       return;
     }
     
-    setPreviewSettings(prev => [
-      ...prev, 
-      {...prev[activePreviewIndex]}
-    ]);
+    setProjectData(prev => ({
+      ...prev,
+      previewSettings: [...prev.previewSettings, previewSettings[activePreviewIndex]]
+    }));
     
-    setActivePreviewIndex(previewSettings.length);
+    updateProjectData('activePreviewIndex', previewSettings.length);
   };
 
   // Remove current preview
@@ -138,132 +137,26 @@ function App() {
       return;
     }
     
-    setPreviewSettings(prev => {
-      const newSettings = [...prev];
-      newSettings.splice(activePreviewIndex, 1);
-      return newSettings;
-    });
+    setProjectData(prev => ({
+      ...prev,
+      previewSettings: prev.previewSettings.filter((_, index) => index !== activePreviewIndex)
+    }));
     
-    setActivePreviewIndex(0);
+    updateProjectData('activePreviewIndex', 0);
   };
 
-  // Switch between previews
+  // Update the switching function to use the local state
   const switchPreview = (index) => {
     setActivePreviewIndex(index);
   };
-
-  // Update the screenshot selection inside the App component
-  const handleScreenshotSelect = (index) => {
-    setCurrentScreenshotIndex(index);
-    
-    // Also update the current preview settings to use this screenshot
-    setPreviewSettings(prevSettings => {
-      const newSettings = [...prevSettings];
-      newSettings[activePreviewIndex] = {
-        ...newSettings[activePreviewIndex],
-        screenshotIndex: index
-      };
-      return newSettings;
-    });
-  };
-
-  // Update the autosave effect
-  useEffect(() => {
-    // Don't save if there are no screenshots or settings yet
-    if (screenshots.length === 0 && previewSettings[0].screenshotIndex === -1) {
-      return;
-    }
-    
-    // Save state when relevant data changes
-    const saveState = async () => {
-      try {
-        // Process screenshots to ensure we're storing data URLs, not blob URLs
-        const processedScreenshots = screenshots.map(screenshot => {
-          // If the src is a blob URL, we need to preserve the original data URL
-          if (typeof screenshot.src === 'string' && screenshot.src.startsWith('blob:')) {
-            // Try to find the original data URL if we have it stored
-            return {
-              ...screenshot,
-              // Use the original data URL if available
-              src: screenshot.originalDataURL || screenshot.src,
-            };
-          }
-          return screenshot;
-        });
-        
-        // Save settings first (these are small)
-        const settingsToSave = {
-          previewSettings,
-          deviceType,
-          orientation,
-          currentScreenshotIndex,
-          activePreviewIndex,
-          lastSaved: new Date().toISOString()
-        };
-        
-        // Save settings to localStorage (these are still small enough)
-        localStorage.setItem('appScreenshotSettings', JSON.stringify(settingsToSave));
-        
-        setHasUnsavedChanges(false);
-      } catch (error) {
-        console.warn('Error saving state:', error);
-        // Show a notification to the user
-        alert('Some items may not have been saved due to storage limitations. Consider exporting your project.');
-      }
-    };
-    
-    saveState();
-  }, [screenshots, previewSettings, deviceType, orientation, currentScreenshotIndex, activePreviewIndex]);
 
   // Update the load function
   useEffect(() => {
     // Load data on initial render
     const loadSavedState = async () => {
       try {
-        // Load current project info first
-        const currentProjectInfo = storageService.loadCurrentProjectInfo();
-        setCurrentProject(currentProjectInfo);
-        
-        if (currentProjectInfo) {
-          // If we have a current project, load its data
-          const projectData = await storageService.loadProject(currentProjectInfo.id);
-          console.log("Loaded project data:", projectData);
-          if (projectData) {
-            // Load screenshots from the project data itself
-            console.log("Project screenshots:", projectData.screenshots?.length || 0);
-            setScreenshots(projectData.screenshots || []);
-            setPreviewSettings(projectData.previewSettings || [defaultPreviewSettings]);
-            setDeviceType(projectData.deviceType || 'iphone');
-            setOrientation(projectData.orientation || 'portrait');
-            setCurrentScreenshotIndex(projectData.currentScreenshotIndex || 0);
-            setActivePreviewIndex(projectData.activePreviewIndex || 0);
-            return;
-          }
-        }
-        
-        // Fallback to loading settings from localStorage if no project
-        const savedSettingsJSON = localStorage.getItem('appScreenshotSettings');
-        if (savedSettingsJSON) {
-          const savedSettings = JSON.parse(savedSettingsJSON);
-          setPreviewSettings(savedSettings.previewSettings || [defaultPreviewSettings]);
-          setDeviceType(savedSettings.deviceType || 'iphone');
-          setOrientation(savedSettings.orientation || 'portrait');
-          setCurrentScreenshotIndex(savedSettings.currentScreenshotIndex || 0);
-          setActivePreviewIndex(savedSettings.activePreviewIndex || 0);
-        }
-        
-        // Now try to load screenshots, first from project if available
-        let loadedScreenshots = [];
-        if (currentProjectInfo) {
-          loadedScreenshots = await storageService.loadScreenshotsFromProject(currentProjectInfo.id);
-        } else {
-          // As a fallback, try loading from localStorage
-          loadedScreenshots = await storageService._loadScreenshotsFromLocalStorage();
-        }
-        
-        if (loadedScreenshots && loadedScreenshots.length > 0) {
-          setScreenshots(loadedScreenshots);
-        }
+        // All this logic is now handled in useProjectManagement
+        // ...
       } catch (error) {
         console.error('Error loading saved state:', error);
       }
@@ -272,152 +165,26 @@ function App() {
     loadSavedState();
   }, []);
 
-  // Pass this to the loadProject function
+  // Fix this function to properly load a project from ProjectManager
   const loadProject = async (projectData) => {
     try {
+      if (!projectData) {
+        console.error('Cannot load project: No project data provided');
+        return;
+      }
+      
       // Set current project info
       setCurrentProject({
-        id: projectData.id,
-        name: projectData.name
+        id: projectData.id || Date.now().toString(),
+        name: projectData.name || "Untitled Project"
       });
       
-      // Load saved screenshots
-      if (projectData.screenshots && projectData.screenshots.length > 0) {
-        // Convert image data URLs back to images
-        const loadedScreenshots = projectData.screenshots.map(screenshot => {
-          const img = new Image();
-          img.src = screenshot.src;
-          return { 
-            src: screenshot.src, 
-            name: screenshot.name,
-            img: img
-          };
-        });
-        setScreenshots(loadedScreenshots);
-      }
-      
-      // Load saved preview settings
-      if (projectData.previewSettings) {
-        setPreviewSettings(projectData.previewSettings);
-      }
-      
-      // Load other settings
-      if (projectData.deviceType) setDeviceType(projectData.deviceType);
-      if (projectData.orientation) setOrientation(projectData.orientation);
-      if (projectData.currentScreenshotIndex >= 0) {
-        setCurrentScreenshotIndex(projectData.currentScreenshotIndex);
-      }
-      if (projectData.activePreviewIndex >= 0) {
-        setActivePreviewIndex(projectData.activePreviewIndex);
-      }
+      // Set the project data directly
+      setProjectData(projectData);
     } catch (error) {
       console.error('Error loading project:', error);
     }
   };
-
-  // Add this to your component cleanup code
-  useEffect(() => {
-    return () => {
-      // Clean up any blob URLs when component unmounts
-      screenshots.forEach(screenshot => {
-        if (screenshot.blobUrl) {
-          URL.revokeObjectURL(screenshot.src);
-        }
-      });
-    };
-  }, [screenshots]);
-
-  // Replace this effect that creates global functions:
-  useEffect(() => {
-    // Load current project info on initial render
-    const currentProjectInfo = storageService.loadCurrentProjectInfo();
-    if (currentProjectInfo) {
-      setCurrentProject(currentProjectInfo);
-    }
-  }, []);
-
-  // Replace this effect that saves current project info:
-  useEffect(() => {
-    if (currentProject) {
-      storageService.saveCurrentProjectInfo(currentProject);
-    }
-  }, [currentProject]);
-
-  // Update the saveCurrentProject function to properly include screenshots
-
-  const saveCurrentProject = async (projectId, projectName) => {
-    try {
-      // Process screenshots to ensure we're storing data URLs, not blob URLs
-      const processedScreenshots = screenshots.map(screenshot => {
-        // If the src is a blob URL, we need to preserve the original data URL
-        if (typeof screenshot.src === 'string' && screenshot.src.startsWith('blob:')) {
-          // Use the original data URL if available
-          return {
-            ...screenshot,
-            src: screenshot.originalDataURL || screenshot.src,
-          };
-        }
-        return screenshot;
-      });
-      
-      // Create project data that includes all necessary state
-      const projectData = {
-        screenshots: processedScreenshots,
-        previewSettings,
-        deviceType,
-        orientation,
-        currentScreenshotIndex,
-        activePreviewIndex,
-        lastSaved: new Date().toISOString()
-      };
-      
-      // Save the project data
-      await storageService.saveCurrentProject(projectId, projectData);
-      
-      // Update current project info
-      const projectInfo = {
-        id: projectId,
-        name: projectName,
-        lastSaved: new Date().toISOString()
-      };
-      
-      setCurrentProject(projectInfo);
-      storageService.saveCurrentProjectInfo(projectInfo);
-      setHasUnsavedChanges(false);
-      
-      return true;
-    } catch (error) {
-      console.error('Error saving project:', error);
-      return false;
-    }
-  };
-
-  // Check for changes whenever relevant state changes
-  useEffect(() => {
-    if (!lastSavedState || !currentProject) {
-      return;
-    }
-    
-    const currentState = {
-      screenshots: screenshots.map(s => s.id || s.name),
-      previewSettings: JSON.stringify(previewSettings),
-      deviceType,
-      orientation,
-      currentScreenshotIndex,
-      activePreviewIndex
-    };
-    
-    // Compare current state with last saved state
-    const hasChanges = 
-      currentState.screenshots.length !== lastSavedState.screenshots.length ||
-      currentState.previewSettings !== lastSavedState.previewSettings ||
-      currentState.deviceType !== lastSavedState.deviceType ||
-      currentState.orientation !== lastSavedState.orientation ||
-      currentState.currentScreenshotIndex !== lastSavedState.currentScreenshotIndex ||
-      currentState.activePreviewIndex !== lastSavedState.activePreviewIndex;
-    
-    setHasUnsavedChanges(hasChanges);
-  }, [screenshots, previewSettings, deviceType, orientation, currentScreenshotIndex, activePreviewIndex, lastSavedState, currentProject]);
 
   // Fix the exportAllPreviews function
   const exportAllPreviews = async () => {
@@ -479,7 +246,7 @@ function App() {
     <div className="app min-h-screen bg-gray-100 dark:bg-gray-900 transition-colors duration-200">
       <Header 
         darkMode={darkMode} 
-        toggleDarkMode={toggleDarkMode} 
+        toggleDarkMode={() => setDarkMode(prev => !prev)} 
         currentProject={currentProject}
       />
       
@@ -490,13 +257,13 @@ function App() {
             previewSettings={previewSettings}
             deviceType={deviceType}
             orientation={orientation}
-            currentScreenshotIndex={currentScreenshotIndex}
+            currentScreenshotIndex={previewSettings[activePreviewIndex]?.screenshotIndex === undefined ? -1 : previewSettings[activePreviewIndex]?.screenshotIndex}
             activePreviewIndex={activePreviewIndex}
             loadProject={loadProject}
             currentProject={currentProject}
             setCurrentProject={setCurrentProject}
             hasUnsavedChanges={hasUnsavedChanges}
-            onSaveCurrentProject={saveCurrentProject}
+            onSaveCurrentProject={handleQuickSave}
           />
         </div>
         
@@ -504,12 +271,12 @@ function App() {
           <div className="flex-2 min-w-[300px]">
             <EditorPanel 
               deviceType={deviceType}
-              setDeviceType={setDeviceType}
+              setDeviceType={(newType) => updateProjectData('deviceType', newType)}
               orientation={orientation}
-              setOrientation={setOrientation}
+              setOrientation={(newOrientation) => updateProjectData('orientation', newOrientation)}
               screenshots={screenshots}
-              setScreenshots={setScreenshots}
-              currentScreenshotIndex={currentScreenshotIndex}
+              setScreenshots={(newScreenshots) => updateProjectData('screenshots', newScreenshots)}
+              currentScreenshotIndex={previewSettings[activePreviewIndex]?.screenshotIndex === undefined ? -1 : previewSettings[activePreviewIndex]?.screenshotIndex}
               setCurrentScreenshotIndex={handleScreenshotSelect}
               previewSettings={previewSettings[activePreviewIndex]}
               updatePreviewSetting={updatePreviewSetting}
@@ -524,15 +291,15 @@ function App() {
             className="flex-1 w-full xl:max-w-[calc(100%-380px)] 2xl:max-w-[calc(100%-350px)] 3xl:max-w-[calc(100%-320px)]"
             deviceType={deviceType}
             orientation={orientation}
-            scale={(previewSettings[activePreviewIndex].scale / 100) * 1.5}
-            previewSettings={previewSettings}
+            scale={((previewSettings?.[activePreviewIndex]?.scale || 90) / 100) * 1.5}
+            previewSettings={previewSettings || []}
             activePreviewIndex={activePreviewIndex}
             switchPreview={switchPreview}
             addPreview={addPreview}
             removePreview={removePreview}
             deviceDimensions={deviceDimensions}
             screenshots={screenshots}
-            currentScreenshotIndex={currentScreenshotIndex}
+            currentScreenshotIndex={previewSettings[activePreviewIndex]?.screenshotIndex ?? -1}
             exportButtons={
               <div className="flex gap-3 mt-6">
                 <button 
@@ -560,7 +327,7 @@ function App() {
               deviceType={deviceType}
               orientation={orientation}
               screenshots={screenshots}
-              currentScreenshotIndex={currentScreenshotIndex}
+              currentScreenshotIndex={previewSettings[activePreviewIndex]?.screenshotIndex ?? -1}
               previewSettings={previewSettings}
               activePreviewIndex={activePreviewIndex}
               deviceDimensions={deviceDimensions}

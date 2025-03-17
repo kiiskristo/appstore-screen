@@ -192,24 +192,19 @@ function ProjectManager({
   // Load a saved project
   const handleLoadProject = async (projectId) => {
     try {
-      // Load project using storage service
+      // Load project data
       const projectData = await StorageService.loadProject(projectId);
       
       if (projectData) {
-        // If we saved without screenshots, show a message
-        if (projectData.screenshotsError) {
-          alert('This project was saved without screenshots due to storage limitations.');
-        }
-        
-        // Load the project data
+        // Use the App.js loadProject function
         loadProject(projectData);
+        // Close dialog after loading
         setIsOpen(false);
       } else {
-        alert('Could not load project data.');
+        console.error('Could not load project data for ID:', projectId);
       }
     } catch (error) {
       console.error('Error loading project:', error);
-      alert('Failed to load project. The data may be corrupted.');
     }
   };
   
