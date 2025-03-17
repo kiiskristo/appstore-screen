@@ -175,17 +175,18 @@ function ProjectManager({
   }, [currentProject]);
   
   // Update the quick save function to use the passed callback
-  const quickSave = () => {
-    if (currentProject) {
-      if (onSaveCurrentProject) {
-        onSaveCurrentProject(); // Use the callback from App.js
-      } else {
-        saveProject(false); // Fallback to the local method
-      }
-    } else {
-      // No current project, open the dialog
-      setIsOpen(true);
-    }
+  const quickSave = async () => {
+    // If no project exists yet, create one with default name
+    const projectId = currentProject?.id || Date.now().toString();
+    const projectName = currentProject?.name || "Untitled Project";
+    
+    console.log("Quick saving project with ID:", projectId, "Name:", projectName);
+    
+    // Save the project using the project ID and name
+    await onSaveCurrentProject(projectId, projectName);
+    
+    // Close dropdown after saving
+    setIsOpen(false);
   };
   
   // Load a saved project

@@ -74,6 +74,7 @@ function EditorPanel({
         textPosition={previewSettings.textPosition}
         textPositionX={previewSettings.textPositionX}
         textPositionY={previewSettings.textPositionY}
+        textSpacing={previewSettings.textSpacing}
         updatePreviewSetting={updatePreviewSetting}
         darkMode={darkMode}
       />

@@ -15,7 +15,8 @@ function ScreenshotUploader({
         
         reader.onload = function(e) {
           const img = new Image();
-          img.src = e.target.result;
+          const originalDataURL = e.target.result;
+          img.src = originalDataURL;
           
           img.onload = function() {
             // Determine orientation from image dimensions
@@ -24,7 +25,10 @@ function ScreenshotUploader({
             setScreenshots(prev => [
               ...prev,
               {
-                src: e.target.result,
+                src: originalDataURL,
+                originalDataURL: originalDataURL,
+                width: img.width,
+                height: img.height,
                 isLandscape: isLandscape
               }
             ]);
@@ -98,13 +102,19 @@ function ScreenshotUploader({
       </div>
       
       {screenshots.length > 0 && (
-        <div>
-          <label className="editor-label">Available Screenshots</label>
-          <div className="flex flex-wrap gap-2 mt-2">
+        <div className="mt-4">
+          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Available Screenshots
+          </h4>
+          <div className="screenshot-grid">
             {screenshots.map((screenshot, index) => (
               <div 
                 key={index}
-                className={`w-16 h-16 rounded-md overflow-hidden cursor-pointer border-2 ${currentScreenshotIndex === index ? 'border-blue-500' : 'border-gray-300 dark:border-gray-600'}`}
+                className={`screenshot-thumbnail relative overflow-hidden rounded-md border-2 transition-all ${
+                  currentScreenshotIndex === index 
+                    ? 'border-blue-500 shadow-md' 
+                    : 'border-gray-300 dark:border-gray-600'
+                }`}
                 onClick={() => selectScreenshot(index)}
               >
                 <img 
@@ -112,6 +122,12 @@ function ScreenshotUploader({
                   alt={`Screenshot ${index + 1}`} 
                   className="w-full h-full object-cover"
                 />
+                <div className="screenshot-info absolute bottom-0 left-0 right-0 bg-black bg-opacity-60 text-white p-1 text-xs">
+                  <div className="flex justify-between items-center">
+                    <span>{`Screenshot ${index + 1}`}</span>
+                    <small>{screenshot.width}×{screenshot.height}</small>
+                  </div>
+                </div>
               </div>
             ))}
           </div>

@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
-import iPhoneFramePortrait from '../assets/frames/iPhone 16 - Black - Portrait.png';
+import { detectDeviceFromDimensions, getFrameSource, deviceFrames } from '../assets/deviceFrameImages';
 
 // This component only handles canvas rendering logic - no UI navigation
 function CanvasPreviewPanelBase({
@@ -66,10 +66,14 @@ function CanvasPreviewPanelBase({
     };
   }, [calculateScale]);
   
-  // Preload frame image
+  // Preload all frame images for better performance
   useEffect(() => {
-    const preloadFrame = new Image();
-    preloadFrame.src = iPhoneFramePortrait;
+    Object.values(deviceFrames).forEach(device => {
+      Object.values(device.frames).forEach(frameSrc => {
+        const preloadFrame = new Image();
+        preloadFrame.src = frameSrc;
+      });
+    });
   }, []);
   
   // Only update when THIS specific preview's settings change
@@ -91,7 +95,6 @@ function CanvasPreviewPanelBase({
     // Simple check if document fonts API is available
     if ('fonts' in document) {
       document.fonts.ready.then(() => {
-        console.log('All fonts loaded and ready for canvas use');
         setFontsLoaded(true);
       });
     } else {
@@ -168,53 +171,17 @@ function CanvasPreviewPanelBase({
       // Calculate size based on orientation
       let drawWidth, drawHeight;
       const baseSize = canvas.width / (dpr * 1.33); // 75% of canvas width
-      const paddingAmount = -5; // 2px on each side
+      const paddingAmount = 0; // Positive padding to show the rounded corners
       
       if (isLandscape) {
         drawWidth = baseSize;
         drawHeight = baseSize * (img.height / img.width);
         
-        // Add padding to shorter dimension (height in landscape)
-        const paddingRatio = paddingAmount / drawHeight;
-        const srcPadding = img.height * paddingRatio;
-        
-        // When drawing, use a smaller source rectangle
-        ctx.save();
-        ctx.translate(centerX, centerY);
-        ctx.translate(
-          (canvas.width * currentSettings.positionX) / (100 * dpr),
-          (canvas.height * currentSettings.positionY) / (100 * dpr)
-        );
-        ctx.rotate((currentSettings.rotation * Math.PI) / 180);
-        ctx.scale(currentSettings.scale / 100, currentSettings.scale / 100);
-        
-        // Draw screenshot with rounded corners
-        if (currentSettings.showFrame && currentSettings.cornerRadius > 0) {
-          drawRoundedRect(ctx, -drawWidth/2, -drawHeight/2, drawWidth, drawHeight, currentSettings.cornerRadius);
-          ctx.clip();
-          
-          // Draw with padding
-          ctx.drawImage(
-            img, 
-            0, srcPadding, img.width, img.height - (srcPadding * 2), // Source with padding
-            -drawWidth/2, -drawHeight/2, drawWidth, drawHeight        // Destination
-          );
-          ctx.restore();
-        } else {
-          // Draw with padding
-          ctx.drawImage(
-            img, 
-            0, srcPadding, img.width, img.height - (srcPadding * 2), // Source with padding
-            -drawWidth/2, -drawHeight/2, drawWidth, drawHeight        // Destination
-          );
-        }
-      } else {
-        drawHeight = baseSize;
-        drawWidth = baseSize * (img.width / img.height);
-        
-        // Add padding to shorter dimension (width in portrait)
-        const paddingRatio = paddingAmount / drawWidth;
-        const srcPadding = img.width * paddingRatio;
+        // Add padding to all edges
+        const heightPaddingRatio = paddingAmount / drawHeight;
+        const widthPaddingRatio = paddingAmount / drawWidth;
+        const srcHeightPadding = img.height * heightPaddingRatio;
+        const srcWidthPadding = img.width * widthPaddingRatio;
         
         // Save context for transformations
         ctx.save();
@@ -226,31 +193,94 @@ function CanvasPreviewPanelBase({
         ctx.rotate((currentSettings.rotation * Math.PI) / 180);
         ctx.scale(currentSettings.scale / 100, currentSettings.scale / 100);
         
-        // Draw screenshot with rounded corners
-        if (currentSettings.showFrame && currentSettings.cornerRadius > 0) {
-          drawRoundedRect(ctx, -drawWidth/2, -drawHeight/2, drawWidth, drawHeight, currentSettings.cornerRadius);
+        // Create a second save point for the clipping operation
+        ctx.save();
+        
+        // Scale the corner radius based on the canvas dimensions
+        const scaleFactor = Math.min(canvas.width, canvas.height) / (1500 * dpr); // Baseline of 1500px
+        const scaledCornerRadius = currentSettings.cornerRadius * scaleFactor;
+        
+        // Then use scaledCornerRadius instead of currentSettings.cornerRadius in the drawing code
+        if (scaledCornerRadius > 0) {
+          drawRoundedRect(ctx, -drawWidth/2, -drawHeight/2, drawWidth, drawHeight, scaledCornerRadius);
           ctx.clip();
-          
-          // Draw with padding
-          ctx.drawImage(
-            img, 
-            srcPadding, 0, img.width - (srcPadding * 2), img.height, // Source with padding
-            -drawWidth/2, -drawHeight/2, drawWidth, drawHeight       // Destination
-          );
-          ctx.restore();
-        } else {
-          // Draw with padding
-          ctx.drawImage(
-            img, 
-            srcPadding, 0, img.width - (srcPadding * 2), img.height, // Source with padding
-            -drawWidth/2, -drawHeight/2, drawWidth, drawHeight       // Destination
-          );
         }
+        
+        // Draw with padding
+        ctx.drawImage(
+          img, 
+          srcWidthPadding, srcHeightPadding, 
+          img.width - (srcWidthPadding * 2), img.height - (srcHeightPadding * 2),
+          -drawWidth/2, -drawHeight/2, drawWidth, drawHeight
+        );
+        
+        // Restore from the clipping context
+        ctx.restore();
+        
+        // Finally restore the original context
+        ctx.restore();
+      } else {
+        drawHeight = baseSize;
+        drawWidth = baseSize * (img.width / img.height);
+        
+        // Add padding to all edges
+        const widthPaddingRatio = paddingAmount / drawWidth;
+        const heightPaddingRatio = paddingAmount / drawHeight;
+        const srcWidthPadding = img.width * widthPaddingRatio;
+        const srcHeightPadding = img.height * heightPaddingRatio;
+        
+        // Save context for transformations
+        ctx.save();
+        ctx.translate(centerX, centerY);
+        ctx.translate(
+          (canvas.width * currentSettings.positionX) / (100 * dpr),
+          (canvas.height * currentSettings.positionY) / (100 * dpr)
+        );
+        ctx.rotate((currentSettings.rotation * Math.PI) / 180);
+        ctx.scale(currentSettings.scale / 100, currentSettings.scale / 100);
+        
+        // Create a second save point for the clipping operation
+        ctx.save();
+        
+        // Scale the corner radius based on the canvas dimensions
+        const scaleFactor = Math.min(canvas.width, canvas.height) / (1500 * dpr); // Baseline of 1500px
+        const scaledCornerRadius = currentSettings.cornerRadius * scaleFactor;
+        
+        // Then use scaledCornerRadius instead of currentSettings.cornerRadius in the drawing code
+        if (scaledCornerRadius > 0) {
+          drawRoundedRect(ctx, -drawWidth/2, -drawHeight/2, drawWidth, drawHeight, scaledCornerRadius);
+          ctx.clip();
+        }
+        
+        // Draw with padding
+        ctx.drawImage(
+          img, 
+          srcWidthPadding, srcHeightPadding, 
+          img.width - (srcWidthPadding * 2), img.height - (srcHeightPadding * 2),
+          -drawWidth/2, -drawHeight/2, drawWidth, drawHeight
+        );
+        
+        // Restore from the clipping context
+        ctx.restore();
+        
+        // Finally restore the original context
+        ctx.restore();
       }
       
-      // Draw device frame if enabled
+      // Move the frame drawing code BEFORE the screenshot drawing
       if (currentSettings.showFrame) {
         const frameImg = new Image();
+        
+        // Get screenshot dimensions for frame detection
+        const screenshotWidth = img.width;
+        const screenshotHeight = img.height;
+        
+        // Detect the device model from dimensions
+        const detectedDevice = detectDeviceFromDimensions(screenshotWidth, screenshotHeight);
+        
+        // Get correct frame based on device and color
+        const frameSrc = getFrameSource(detectedDevice, currentSettings.frameColor || 'black');
+        
         frameImg.onload = () => {
           ctx.save();
           ctx.translate(centerX, centerY);
@@ -261,21 +291,28 @@ function CanvasPreviewPanelBase({
           ctx.rotate((currentSettings.rotation * Math.PI) / 180);
           ctx.scale(currentSettings.scale / 100, currentSettings.scale / 100);
           
-          // If screenshot is landscape, swap width and height for the frame
+          // Calculate frame dimensions properly for both orientations
           let frameWidth, frameHeight;
           if (isLandscape) {
-            // When rotated 90 degrees, we need to swap width/height
-            frameWidth = drawHeight;
-            frameHeight = drawWidth;
+            // When the screenshot is landscape but our frame image is portrait (1313 x 2656)
+            // We need to rotate the frame 90 degrees AND use the correct dimensions
             
-            // Rotate frame
+            // First rotate the frame
             ctx.rotate(Math.PI / 2); // 90 degrees
+            
+            // Now calculate dimensions considering the rotation
+            // The frame height should match the screenshot width (but slightly larger)
+            frameWidth = drawHeight * 1.1;
+            // Maintain aspect ratio of the frame (but inverted because of rotation)
+            // For a rotated frame, we use height/width instead of width/height
+            frameHeight = frameWidth * (frameImg.height / frameImg.width);
           } else {
-            frameWidth = drawWidth;
-            frameHeight = drawHeight;
+            // For portrait screenshots using portrait frames, normal calculation
+            frameWidth = drawWidth * 1.1;
+            frameHeight = frameHeight = frameWidth * (frameImg.height / frameImg.width);
           }
           
-          // Draw frame exactly over the screenshot
+          // Draw frame first, slightly larger than the screenshot
           ctx.drawImage(frameImg, -frameWidth/2, -frameHeight/2, frameWidth, frameHeight);
           ctx.restore();
         };
@@ -284,7 +321,7 @@ function CanvasPreviewPanelBase({
           console.error('Error loading frame:', e);
         };
         
-        frameImg.src = iPhoneFramePortrait;
+        frameImg.src = frameSrc;
       }
       
       // Draw text if enabled
@@ -326,13 +363,11 @@ function CanvasPreviewPanelBase({
         ctx.shadowOffsetY = 2;
         
         // Draw title with wrapping
+        const titleMaxWidth = canvas.width * 0.8 / dpr; // 80% of canvas width
         ctx.font = `${currentSettings.titleFontWeight} ${titleFontSize}px ${currentSettings.titleFontFamily}`;
         ctx.fillStyle = currentSettings.textColor;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        
-        // Wrap and draw title
-        const titleMaxWidth = canvas.width * 0.8 / dpr; // 80% of canvas width
         const titleLines = wrapText(ctx, title, titleMaxWidth);
         let titleYOffset = textY - titleFontSize * (titleLines.length / 2);
         

@@ -35,6 +35,7 @@ function App() {
     textPosition: 'bottom',
     textPositionX: 50,
     textPositionY: 80,
+    textSpacing: 20,
     showFrame: true,
     frameColor: 'black',
     titleFontWeight: 'bold',
@@ -176,6 +177,20 @@ function App() {
     // Save state when relevant data changes
     const saveState = async () => {
       try {
+        // Process screenshots to ensure we're storing data URLs, not blob URLs
+        const processedScreenshots = screenshots.map(screenshot => {
+          // If the src is a blob URL, we need to preserve the original data URL
+          if (typeof screenshot.src === 'string' && screenshot.src.startsWith('blob:')) {
+            // Try to find the original data URL if we have it stored
+            return {
+              ...screenshot,
+              // Use the original data URL if available
+              src: screenshot.originalDataURL || screenshot.src,
+            };
+          }
+          return screenshot;
+        });
+        
         // Save settings first (these are small)
         const settingsToSave = {
           previewSettings,
@@ -189,10 +204,7 @@ function App() {
         // Save settings to localStorage (these are still small enough)
         localStorage.setItem('appScreenshotSettings', JSON.stringify(settingsToSave));
         
-        // Save screenshots using the storage service
-        if (screenshots.length > 0) {
-          await storageService.saveScreenshots(screenshots);
-        }
+        setHasUnsavedChanges(false);
       } catch (error) {
         console.warn('Error saving state:', error);
         // Show a notification to the user
@@ -208,30 +220,48 @@ function App() {
     // Load data on initial render
     const loadSavedState = async () => {
       try {
-        // First load settings
-        const savedSettings = localStorage.getItem('appScreenshotSettings');
-        if (savedSettings) {
-          const parsedSettings = JSON.parse(savedSettings);
-          
-          // Load saved preview settings
-          if (parsedSettings.previewSettings) {
-            setPreviewSettings(parsedSettings.previewSettings);
-          }
-          
-          // Load other settings
-          if (parsedSettings.deviceType) setDeviceType(parsedSettings.deviceType);
-          if (parsedSettings.orientation) setOrientation(parsedSettings.orientation);
-          if (parsedSettings.currentScreenshotIndex >= 0) {
-            setCurrentScreenshotIndex(parsedSettings.currentScreenshotIndex);
-          }
-          if (parsedSettings.activePreviewIndex >= 0) {
-            setActivePreviewIndex(parsedSettings.activePreviewIndex);
+        // Load current project info first
+        const currentProjectInfo = storageService.loadCurrentProjectInfo();
+        setCurrentProject(currentProjectInfo);
+        
+        if (currentProjectInfo) {
+          // If we have a current project, load its data
+          const projectData = await storageService.loadProject(currentProjectInfo.id);
+          console.log("Loaded project data:", projectData);
+          if (projectData) {
+            // Load screenshots from the project data itself
+            console.log("Project screenshots:", projectData.screenshots?.length || 0);
+            setScreenshots(projectData.screenshots || []);
+            setPreviewSettings(projectData.previewSettings || [defaultPreviewSettings]);
+            setDeviceType(projectData.deviceType || 'iphone');
+            setOrientation(projectData.orientation || 'portrait');
+            setCurrentScreenshotIndex(projectData.currentScreenshotIndex || 0);
+            setActivePreviewIndex(projectData.activePreviewIndex || 0);
+            return;
           }
         }
         
-        // Then load screenshots using the storage service
-        const loadedScreenshots = await storageService.loadScreenshots();
-        if (loadedScreenshots.length > 0) {
+        // Fallback to loading settings from localStorage if no project
+        const savedSettingsJSON = localStorage.getItem('appScreenshotSettings');
+        if (savedSettingsJSON) {
+          const savedSettings = JSON.parse(savedSettingsJSON);
+          setPreviewSettings(savedSettings.previewSettings || [defaultPreviewSettings]);
+          setDeviceType(savedSettings.deviceType || 'iphone');
+          setOrientation(savedSettings.orientation || 'portrait');
+          setCurrentScreenshotIndex(savedSettings.currentScreenshotIndex || 0);
+          setActivePreviewIndex(savedSettings.activePreviewIndex || 0);
+        }
+        
+        // Now try to load screenshots, first from project if available
+        let loadedScreenshots = [];
+        if (currentProjectInfo) {
+          loadedScreenshots = await storageService.loadScreenshotsFromProject(currentProjectInfo.id);
+        } else {
+          // As a fallback, try loading from localStorage
+          loadedScreenshots = await storageService._loadScreenshotsFromLocalStorage();
+        }
+        
+        if (loadedScreenshots && loadedScreenshots.length > 0) {
           setScreenshots(loadedScreenshots);
         }
       } catch (error) {
@@ -313,65 +343,52 @@ function App() {
     }
   }, [currentProject]);
 
-  // Update the saveCurrentProject function:
-  const saveCurrentProject = async () => {
-    if (!currentProject) return;
-    
+  // Update the saveCurrentProject function to properly include screenshots
+
+  const saveCurrentProject = async (projectId, projectName) => {
     try {
-      // Get the current project data
+      // Process screenshots to ensure we're storing data URLs, not blob URLs
+      const processedScreenshots = screenshots.map(screenshot => {
+        // If the src is a blob URL, we need to preserve the original data URL
+        if (typeof screenshot.src === 'string' && screenshot.src.startsWith('blob:')) {
+          // Use the original data URL if available
+          return {
+            ...screenshot,
+            src: screenshot.originalDataURL || screenshot.src,
+          };
+        }
+        return screenshot;
+      });
+      
+      // Create project data that includes all necessary state
       const projectData = {
-        id: currentProject.id,
-        name: currentProject.name,
-        date: new Date().toISOString(),
+        screenshots: processedScreenshots,
+        previewSettings,
         deviceType,
         orientation,
         currentScreenshotIndex,
         activePreviewIndex,
-        previewSettings,
-        screenshots: await Promise.all(
-          screenshots.map(async (screenshot) => {
-            // Only include essential data (compress if needed)
-            return {
-              name: screenshot.name,
-              src: screenshot.src,
-            };
-          })
-        )
+        lastSaved: new Date().toISOString()
       };
       
-      // Save using storage service
-      await storageService.saveCurrentProject(currentProject.id, projectData);
+      // Save the project data
+      await storageService.saveCurrentProject(projectId, projectData);
       
-      // Update project list if needed
-      const allProjects = JSON.parse(localStorage.getItem('appScreenshotProjects') || '[]');
-      const projectExists = allProjects.some(p => p.id === currentProject.id);
-      
-      if (!projectExists) {
-        const updatedProjects = [
-          ...allProjects, 
-          {
-            id: currentProject.id,
-            name: currentProject.name,
-            date: new Date().toISOString()
-          }
-        ];
-        localStorage.setItem('appScreenshotProjects', JSON.stringify(updatedProjects));
-      }
-      
-      // Record the current state as the last saved state
-      const currentState = {
-        screenshots: screenshots.map(s => s.id || s.name),
-        previewSettings: JSON.stringify(previewSettings),
-        deviceType,
-        orientation,
-        currentScreenshotIndex,
-        activePreviewIndex
+      // Update current project info
+      const projectInfo = {
+        id: projectId,
+        name: projectName,
+        lastSaved: new Date().toISOString()
       };
       
-      setLastSavedState(currentState);
+      setCurrentProject(projectInfo);
+      storageService.saveCurrentProjectInfo(projectInfo);
       setHasUnsavedChanges(false);
+      
+      return true;
     } catch (error) {
-      console.error('Error saving current project:', error);
+      console.error('Error saving project:', error);
+      return false;
     }
   };
 
@@ -483,7 +500,7 @@ function App() {
           />
         </div>
         
-        <div className="flex flex-col lg:flex-row gap-6">
+        <div className="flex flex-col md:flex-row gap-6 mt-6 max-w-full overflow-hidden">
           <div className="flex-2 min-w-[300px]">
             <EditorPanel 
               deviceType={deviceType}
@@ -503,6 +520,8 @@ function App() {
           </div>
           
           <PreviewContainer
+            title="Preview"
+            className="flex-1 w-full xl:max-w-[calc(100%-380px)] 2xl:max-w-[calc(100%-350px)] 3xl:max-w-[calc(100%-320px)]"
             deviceType={deviceType}
             orientation={orientation}
             scale={(previewSettings[activePreviewIndex].scale / 100) * 1.5}

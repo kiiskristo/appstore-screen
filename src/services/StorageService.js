@@ -5,252 +5,132 @@ class StorageService {
     this.dbName = 'AppScreenshotDB';
     this.version = 1;
     this.db = null;
-    this.dbReady = this.initDB();
+    this.useLocalStorage = false;
+    this.dbReady = false;
+    
+    // Initialize as a promise that resolves once the DB is ready
+    this.dbReadyPromise = this.initDB().then(() => {
+      this.dbReady = true;
+      console.log("IndexedDB initialization complete");
+    }).catch(err => {
+      console.error("IndexedDB initialization failed:", err);
+      this.useLocalStorage = true;
+    });
   }
   
   async initDB() {
-    try {
-      return new Promise((resolve, reject) => {
-        // Check if IndexedDB is supported
-        if (!window.indexedDB) {
-          console.warn('IndexedDB not supported - falling back to localStorage');
-          this.useLocalStorage = true;
-          resolve(false);
-          return;
+    return new Promise((resolve, reject) => {
+      console.log("Opening IndexedDB:", this.dbName);
+      const request = indexedDB.open(this.dbName, this.version);
+      
+      request.onupgradeneeded = (event) => {
+        console.log("Upgrading database schema");
+        const db = event.target.result;
+        
+        if (!db.objectStoreNames.contains('projects')) {
+          db.createObjectStore('projects', { keyPath: 'id' });
         }
+      };
+      
+      request.onsuccess = (event) => {
+        console.log("Database opened successfully");
+        this.db = event.target.result;
         
-        const request = indexedDB.open(this.dbName, this.version);
-        
-        request.onupgradeneeded = (event) => {
-          const db = event.target.result;
-          // Create object stores if they don't exist
-          if (!db.objectStoreNames.contains('screenshots')) {
-            db.createObjectStore('screenshots', { keyPath: 'id' });
-          }
-          if (!db.objectStoreNames.contains('settings')) {
-            db.createObjectStore('settings', { keyPath: 'id' });
-          }
-          if (!db.objectStoreNames.contains('projects')) {
-            db.createObjectStore('projects', { keyPath: 'id' });
-          }
+        // Add connection error handlers
+        this.db.onerror = (event) => {
+          console.error("Database error:", event.target.error);
         };
         
-        request.onsuccess = (event) => {
-          this.db = event.target.result;
+        // Check database connection is valid
+        if (this.db.objectStoreNames.contains('projects')) {
+          console.log("Projects store exists");
           resolve(true);
-        };
-        
-        request.onerror = (event) => {
-          console.error('Error opening IndexedDB:', event.target.error);
+        } else {
+          console.error("Projects store missing");
           this.useLocalStorage = true;
-          resolve(false);
-        };
-      });
-    } catch (error) {
-      console.error('Error initializing DB:', error);
-      this.useLocalStorage = true;
-      return false;
-    }
-  }
-  
-  async saveScreenshots(screenshots) {
-    await this.dbReady;
-    
-    if (this.useLocalStorage) {
-      return this._saveScreenshotsToLocalStorage(screenshots);
-    }
-    
-    try {
-      // First, prepare the blobs outside of any transaction
-      const preparedScreenshots = [];
-      for (let i = 0; i < screenshots.length; i++) {
-        const screenshot = screenshots[i];
-        try {
-          // Convert and compress outside the transaction
-          const blob = await this._dataURLToBlob(screenshot.src);
-          preparedScreenshots.push({
-            id: `screenshot_${i}`,
-            blob: blob,
-            name: screenshot.name,
-            originalIndex: i
-          });
-        } catch (err) {
-          console.error(`Error preparing screenshot ${i}:`, err);
+          reject(new Error("Required stores not found"));
         }
-      }
+      };
       
-      // Now that we have all blobs prepared, we can use a transaction
-      return new Promise((resolve, reject) => {
-        const tx = this.db.transaction(['screenshots', 'settings'], 'readwrite');
-        const store = tx.objectStore('screenshots');
-        const settingsStore = tx.objectStore('settings');
-        
-        // Clear existing screenshots first
-        store.clear();
-        
-        // Add each prepared screenshot to the store
-        preparedScreenshots.forEach(screenshot => {
-          store.put(screenshot);
-        });
-        
-        // Update the settings
-        settingsStore.put({
-          id: 'screenshotList',
-          count: preparedScreenshots.length,
-          lastUpdated: new Date().toISOString()
-        });
-        
-        tx.oncomplete = () => resolve();
-        tx.onerror = (e) => {
-          console.error("Transaction error:", e);
-          reject(e);
-        };
-      });
-    } catch (error) {
-      console.error("Error in saveScreenshots:", error);
-      throw error;
-    }
-  }
-  
-  async loadScreenshots() {
-    await this.dbReady;
-    
-    if (this.useLocalStorage) {
-      return this._loadScreenshotsFromLocalStorage();
-    }
-    
-    try {
-      // Load the list info first
-      const tx = this.db.transaction(['screenshots', 'settings'], 'readonly');
-      const store = tx.objectStore('screenshots');
-      const settingsStore = tx.objectStore('settings');
+      request.onerror = (event) => {
+        console.error("Error opening database:", event);
+        this.useLocalStorage = true;
+        reject(event);
+      };
       
-      // Get the list info
-      const listInfo = await new Promise((resolve, reject) => {
-        const request = settingsStore.get('screenshotList');
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = reject;
-      });
-      
-      if (!listInfo || !listInfo.count) {
-        return [];
-      }
-      
-      const count = listInfo.count;
-      const loadedScreenshots = [];
-      
-      // Load each screenshot
-      for (let i = 0; i < count; i++) {
-        try {
-          const data = await new Promise((resolve, reject) => {
-            const request = store.get(`screenshot_${i}`);
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = reject;
-          });
-          
-          if (data && data.blob) {
-            // Convert blob to URL
-            const url = URL.createObjectURL(data.blob);
-            
-            // Create image
-            const img = new Image();
-            img.src = url;
-            
-            // Wait for image to load
-            await new Promise(resolve => {
-              img.onload = resolve;
-              img.onerror = resolve; // Still resolve, even on error
-            });
-            
-            loadedScreenshots.push({
-              src: url,
-              name: data.name || `Screenshot ${i+1}`,
-              img: img,
-              id: data.id,
-              blobUrl: true // Mark this as a blob URL so we can revoke it later
-            });
-          }
-        } catch (err) {
-          console.error(`Error loading screenshot ${i}:`, err);
-        }
-      }
-      
-      // Sort by original index
-      loadedScreenshots.sort((a, b) => {
-        return parseInt(a.id.split('_')[1]) - parseInt(b.id.split('_')[1]);
-      });
-      
-      return loadedScreenshots;
-    } catch (error) {
-      console.error("Error loading screenshots:", error);
-      return [];
-    }
-  }
-  
-  // Fallback methods for localStorage
-  _saveScreenshotsToLocalStorage(screenshots) {
-    try {
-      // Try to save screenshots if possible, but handle quota errors
-      const screenshotsToSave = screenshots.map(screenshot => ({
-        name: screenshot.name,
-        wasSaved: true,
-        id: screenshot.id || Date.now().toString()
-      }));
-      
-      localStorage.setItem('appScreenshotList', JSON.stringify(screenshotsToSave));
-      
-      // Store each screenshot in its own storage key to avoid exceeding quota
-      screenshots.forEach(async (screenshot, index) => {
-        try {
-          // Compress before saving to localStorage
-          const compressedSrc = await compressImage(screenshot.src, 0.6); // 60% quality for localStorage
-          localStorage.setItem(`appScreenshot_${index}`, compressedSrc);
-        } catch (e) {
-          console.warn(`Could not save screenshot ${index}. It may be too large for localStorage`, e);
-        }
-      });
-      
-      return Promise.resolve();
-    } catch (error) {
-      console.error('Error saving to localStorage:', error);
-      return Promise.reject(error);
-    }
-  }
-  
-  _loadScreenshotsFromLocalStorage() {
-    try {
-      const savedScreenshotList = localStorage.getItem('appScreenshotList');
-      if (!savedScreenshotList) {
-        return Promise.resolve([]);
-      }
-      
-      const parsedList = JSON.parse(savedScreenshotList);
-      const loadedScreenshots = [];
-      
-      for (let i = 0; i < parsedList.length; i++) {
-        const screenshotSrc = localStorage.getItem(`appScreenshot_${i}`);
-        if (screenshotSrc) {
-          const img = new Image();
-          img.src = screenshotSrc;
-          loadedScreenshots.push({
-            src: screenshotSrc,
-            name: parsedList[i].name || `Screenshot ${i+1}`,
-            img: img,
-            id: parsedList[i].id || `screenshot_${i}`
-          });
-        }
-      }
-      
-      return Promise.resolve(loadedScreenshots);
-    } catch (error) {
-      console.error('Error loading from localStorage:', error);
-      return Promise.reject(error);
-    }
+      request.onblocked = (event) => {
+        console.error("Database access blocked");
+        this.useLocalStorage = true;
+        reject(new Error("Database blocked"));
+      };
+    });
   }
   
   // Helper methods for blob handling
-  async _dataURLToBlob(dataURL) {
-    return fetch(dataURL).then(r => r.blob());
+  _dataURLToBlob(dataURL) {
+    // Check if it's already a blob URL (starts with 'blob:')
+    if (dataURL.startsWith('blob:')) {
+      // For blob URLs, we need to fetch the content and create a new blob
+      return new Promise(async (resolve, reject) => {
+        try {
+          // Try to convert the blob URL back to a data URL
+          const response = await fetch(dataURL);
+          const blob = await response.blob();
+          
+          // Create a new FileReader to convert blob to data URL
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            // Now we have a data URL we can process
+            const dataURL = e.target.result;
+            // Process the data URL (extract data part after the comma)
+            const parts = dataURL.split(',');
+            const byteString = atob(parts[1]);
+            const ab = new ArrayBuffer(byteString.length);
+            const ia = new Uint8Array(ab);
+            
+            for (let i = 0; i < byteString.length; i++) {
+              ia[i] = byteString.charCodeAt(i);
+            }
+            
+            resolve(new Blob([ab], { type: 'image/png' }));
+          };
+          
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        } catch (err) {
+          console.error("Error converting blob URL:", err);
+          // If we can't fetch the blob URL, create a placeholder image
+          const canvas = document.createElement('canvas');
+          canvas.width = 200;
+          canvas.height = 200;
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#f0f0f0';
+          ctx.fillRect(0, 0, 200, 200);
+          ctx.fillStyle = '#ff0000';
+          ctx.font = '16px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText('Image Not Available', 100, 100);
+          canvas.toBlob(resolve, 'image/png');
+        }
+      });
+    } else if (dataURL.startsWith('data:')) {
+      // Regular data URL processing (existing code)
+      return new Promise((resolve) => {
+        const parts = dataURL.split(',');
+        const byteString = atob(parts[1]);
+        const ab = new ArrayBuffer(byteString.length);
+        const ia = new Uint8Array(ab);
+        
+        for (let i = 0; i < byteString.length; i++) {
+          ia[i] = byteString.charCodeAt(i);
+        }
+        
+        resolve(new Blob([ab], { type: 'image/png' }));
+      });
+    } else {
+      // Handle other URL types or invalid data
+      return Promise.reject(new Error('Invalid URL format'));
+    }
   }
   
   async _compressBlob(blob, quality = 0.7) {
@@ -266,16 +146,14 @@ class StorageService {
     // Convert back to blob
     return fetch(compressedDataURL).then(r => r.blob());
   }
-  
-  // Similar methods for saving/loading settings and projects
-  // ...
-
-  // Add these project management methods to StorageService
 
   // Save current project
   async saveCurrentProject(projectId, projectData) {
     try {
+      console.log("Saving project:", projectId, projectData);
+      
       if (!this.db) {
+        console.log("IndexedDB not available, using localStorage");
         throw new Error('IndexedDB not available');
       }
       
@@ -289,14 +167,22 @@ class StorageService {
           date: new Date().toISOString()
         });
         
-        request.onsuccess = () => resolve();
-        request.onerror = (e) => reject(e);
+        request.onsuccess = () => {
+          console.log("Project saved successfully:", projectId);
+          resolve();
+        };
+        
+        request.onerror = (e) => {
+          console.error("Error saving project:", e);
+          reject(e);
+        };
       });
     } catch (error) {
       console.error('Error saving project to IndexedDB:', error);
       
       // Fallback to localStorage
       try {
+        console.log("Saving to localStorage instead:", projectId);
         localStorage.setItem(`appScreenshotProject_${projectId}`, JSON.stringify(projectData));
         return Promise.resolve();
       } catch (localStorageError) {
@@ -308,7 +194,11 @@ class StorageService {
   // Load project
   async loadProject(projectId) {
     try {
-      if (!this.db) {
+      // Wait for DB initialization
+      await this.dbReadyPromise;
+      
+      if (!this.db || this.useLocalStorage) {
+        console.log("IndexedDB not available, trying localStorage");
         throw new Error('IndexedDB not available');
       }
       
@@ -316,23 +206,30 @@ class StorageService {
       const store = tx.objectStore('projects');
       
       return new Promise((resolve, reject) => {
+        console.log("Making request to get project:", projectId);
         const request = store.get(projectId);
         
         request.onsuccess = () => {
           const result = request.result;
+          console.log("Project data retrieved:", result);
           resolve(result?.data || null);
         };
         
-        request.onerror = (e) => reject(e);
+        request.onerror = (e) => {
+          console.error("Error in loadProject request:", e);
+          reject(e);
+        };
       });
     } catch (error) {
       console.error('Error loading project from IndexedDB:', error);
       
       // Try localStorage as fallback
       try {
+        console.log("Trying localStorage for project:", projectId);
         const projectData = localStorage.getItem(`appScreenshotProject_${projectId}`);
         return projectData ? JSON.parse(projectData) : null;
       } catch (err) {
+        console.error("Error loading from localStorage:", err);
         return Promise.reject(err);
       }
     }
@@ -361,6 +258,39 @@ class StorageService {
     } catch (error) {
       console.error('Error loading current project info:', error);
       return null;
+    }
+  }
+
+  // New method to load screenshots from current project
+  async loadScreenshotsFromProject(projectId) {
+    try {
+      await this.dbReady;
+      
+      const tx = this.db.transaction(['projects'], 'readonly');
+      const store = tx.objectStore('projects');
+      
+      return new Promise((resolve, reject) => {
+        const request = store.get(projectId);
+        
+        request.onsuccess = () => {
+          const project = request.result;
+          if (!project || !project.data || !project.data.screenshots) {
+            resolve([]);
+            return;
+          }
+          
+          // Use the screenshots from the project
+          resolve(project.data.screenshots);
+        };
+        
+        request.onerror = (e) => {
+          console.error('Error loading project screenshots:', e);
+          reject(e);
+        };
+      });
+    } catch (error) {
+      console.error('Error loading project screenshots:', error);
+      return [];
     }
   }
 }

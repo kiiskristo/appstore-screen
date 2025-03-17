@@ -31,8 +31,6 @@ function DeviceFrameSettings({
           >
             <option value="black">Black</option>
             <option value="white">White</option>
-            <option value="silver">Silver</option>
-            <option value="gold">Gold</option>
           </select>
         </div>
       )}
