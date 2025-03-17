@@ -51,7 +51,6 @@ export default function useProjectManagement() {
       
       const projectInfo = storageService.loadCurrentProjectInfo();
       if (projectInfo) {
-        console.log("Loading project from useProjectManagement:", projectInfo.id);
         setCurrentProject(projectInfo);
         const data = await storageService.loadProject(projectInfo.id);
         if (data) {

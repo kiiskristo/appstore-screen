@@ -239,132 +239,118 @@ function CanvasPreviewPanelBase({
         const screenshotHeight = img.height;
         const detectedDevice = detectDeviceFromDimensions(screenshotWidth, screenshotHeight);
         
-        console.log(`Detected device from screenshot: "${detectedDevice}" (${screenshotWidth}x${screenshotHeight})`);
+        // Calculate the center position
+        const centerX = canvas.width / (2 * dpr);
+        const centerY = canvas.height / (2 * dpr);
         
-        // Use the detected device for the frame
+        // Calculate size based on orientation
+        let drawWidth, drawHeight;
+        const baseSize = canvas.width / (dpr * 1.33); // 75% of canvas width
+        
+        if (isLandscape) {
+          drawWidth = baseSize;
+          drawHeight = baseSize * (img.height / img.width);
+        } else {
+          drawHeight = baseSize;
+          drawWidth = baseSize * (img.width / img.height);
+        }
+        
+        // Clear the canvas again to ensure no artifacts
+        ctx.clearRect(0, 0, canvas.width/dpr, canvas.height/dpr);
+        
+        // Redraw the background
+        if (currentSettings.useGradient) {
+          const gradient = currentSettings.gradientDirection === 'circle' 
+            ? ctx.createRadialGradient(canvas.width/(2*dpr), canvas.height/(2*dpr), 0, canvas.width/(2*dpr), canvas.height/(2*dpr), canvas.width/(2*dpr))
+            : createLinearGradient(ctx, currentSettings.gradientDirection, canvas.width/dpr, canvas.height/dpr);
+          
+          gradient.addColorStop(0, currentSettings.gradientColor1);
+          gradient.addColorStop(1, currentSettings.gradientColor2);
+          ctx.fillStyle = gradient;
+        } else {
+          ctx.fillStyle = 'white';
+        }
+        ctx.fillRect(0, 0, canvas.width/dpr, canvas.height/dpr);
+        
+        // Always draw the screenshot
+        ctx.save();
+        ctx.translate(centerX, centerY);
+        ctx.translate(
+          (canvas.width * currentSettings.positionX) / (100 * dpr),
+          (canvas.height * currentSettings.positionY) / (100 * dpr)
+        );
+        ctx.rotate((currentSettings.rotation * Math.PI) / 180);
+        ctx.scale(currentSettings.scale / 100, currentSettings.scale / 100);
+        
+        // Create a second save point for the clipping operation
+        ctx.save();
+        
+        // Scale the corner radius based on the canvas dimensions
+        const scaleFactor = Math.min(canvas.width, canvas.height) / (1500 * dpr); // Baseline of 1500px
+        const scaledCornerRadius = currentSettings.cornerRadius * scaleFactor;
+        
+        // Then use scaledCornerRadius instead of currentSettings.cornerRadius in the drawing code
+        if (scaledCornerRadius > 0) {
+          drawRoundedRect(ctx, -drawWidth/2, -drawHeight/2, drawWidth, drawHeight, scaledCornerRadius);
+          ctx.clip();
+        }
+        
+        // Draw the screenshot with padding
+        ctx.drawImage(
+          img, 
+          0, 0, 
+          img.width, img.height,
+          -drawWidth/2, -drawHeight/2, drawWidth, drawHeight
+        );
+        
+        // Restore from the clipping context
+        ctx.restore();
+        
+        // Finally restore the original context
+        ctx.restore();
+        
+        // Conditionally load and draw the frame if enabled
         if (currentSettings.showFrame) {
           const frameImg = new Image();
           
           // Get frame source AFTER detecting the device from the screenshot 
           const frameSrc = getFrameSource(detectedDevice, currentSettings.frameColor || 'black');
           
-          console.log(`Loading frame for ${detectedDevice} with color ${currentSettings.frameColor || 'black'}: ${frameSrc}`);
-          
           frameImg.src = frameSrc;
           
-          // Move the frame rendering inside the frameImg.onload handler
           frameImg.onload = () => {
-            // Calculate the center position
-            const centerX = canvas.width / (2 * dpr);
-            const centerY = canvas.height / (2 * dpr);
-            
-            // Calculate size based on orientation
-            let drawWidth, drawHeight;
-            const baseSize = canvas.width / (dpr * 1.33); // 75% of canvas width
-            
-            if (isLandscape) {
-              drawWidth = baseSize;
-              drawHeight = baseSize * (img.height / img.width);
-            } else {
-              drawHeight = baseSize;
-              drawWidth = baseSize * (img.width / img.height);
-            }
-            
-            // Clear the canvas again to ensure no artifacts
-            ctx.clearRect(0, 0, canvas.width/dpr, canvas.height/dpr);
-            
-            // Redraw the background
-            if (currentSettings.useGradient) {
-              const gradient = currentSettings.gradientDirection === 'circle' 
-                ? ctx.createRadialGradient(canvas.width/(2*dpr), canvas.height/(2*dpr), 0, canvas.width/(2*dpr), canvas.height/(2*dpr), canvas.width/(2*dpr))
-                : createLinearGradient(ctx, currentSettings.gradientDirection, canvas.width/dpr, canvas.height/dpr);
-              
-              gradient.addColorStop(0, currentSettings.gradientColor1);
-              gradient.addColorStop(1, currentSettings.gradientColor2);
-              ctx.fillStyle = gradient;
-            } else {
-              ctx.fillStyle = 'white';
-            }
-            ctx.fillRect(0, 0, canvas.width/dpr, canvas.height/dpr);
-            
-            // First draw the screenshot
-            ctx.save();
-            ctx.translate(centerX, centerY);
-            ctx.translate(
-              (canvas.width * currentSettings.positionX) / (100 * dpr),
-              (canvas.height * currentSettings.positionY) / (100 * dpr)
-            );
-            ctx.rotate((currentSettings.rotation * Math.PI) / 180);
-            ctx.scale(currentSettings.scale / 100, currentSettings.scale / 100);
-            
-            // Create a second save point for the clipping operation
-            ctx.save();
-            
-            // Scale the corner radius based on the canvas dimensions
-            const scaleFactor = Math.min(canvas.width, canvas.height) / (1500 * dpr); // Baseline of 1500px
-            const scaledCornerRadius = currentSettings.cornerRadius * scaleFactor;
-            
-            // Then use scaledCornerRadius instead of currentSettings.cornerRadius in the drawing code
-            if (scaledCornerRadius > 0) {
-              drawRoundedRect(ctx, -drawWidth/2, -drawHeight/2, drawWidth, drawHeight, scaledCornerRadius);
-              ctx.clip();
-            }
-            
-            // Draw the screenshot with padding
-            ctx.drawImage(
-              img, 
-              0, 0, 
-              img.width, img.height,
-              -drawWidth/2, -drawHeight/2, drawWidth, drawHeight
-            );
-            
-            // Restore from the clipping context
-            ctx.restore();
-            
-            // Finally restore the original context
-            ctx.restore();
-            
             // THEN draw the frame on top if it's ready and enabled
-            if (currentSettings.showFrame) {
-              // Make sure frame is loaded before drawing
-              if (frameImg.complete && frameImg.naturalHeight !== 0) {
-                ctx.save();
-                ctx.translate(centerX, centerY);
-                ctx.translate(
-                  (canvas.width * currentSettings.positionX) / (100 * dpr),
-                  (canvas.height * currentSettings.positionY) / (100 * dpr)
-                );
-                ctx.rotate((currentSettings.rotation * Math.PI) / 180);
-                ctx.scale(currentSettings.scale / 100, currentSettings.scale / 100);
-                
-                // Calculate frame dimensions properly for both orientations
-                let frameWidth, frameHeight;
-                if (isLandscape) {
-                  // When the screenshot is landscape but our frame image is portrait
-                  ctx.rotate(Math.PI / 2); // 90 degrees
-                  frameWidth = drawHeight * 1.1;
-                  // Fix typo in original code (double assignment)
-                  frameHeight = frameWidth * (frameImg.height / frameImg.width);
-                } else {
-                  // For portrait screenshots using portrait frames
-                  frameWidth = drawWidth * 1.1;
-                  frameHeight = frameWidth * (frameImg.height / frameImg.width);
-                }
-                
-                // Draw frame slightly larger than the screenshot
-                ctx.drawImage(frameImg, -frameWidth/2, -frameHeight/2, frameWidth, frameHeight);
-                ctx.restore();
+            if (frameImg.complete && frameImg.naturalHeight !== 0) {
+              ctx.save();
+              ctx.translate(centerX, centerY);
+              ctx.translate(
+                (canvas.width * currentSettings.positionX) / (100 * dpr),
+                (canvas.height * currentSettings.positionY) / (100 * dpr)
+              );
+              ctx.rotate((currentSettings.rotation * Math.PI) / 180);
+              ctx.scale(currentSettings.scale / 100, currentSettings.scale / 100);
+              
+              // Calculate frame dimensions properly for both orientations
+              let frameWidth, frameHeight;
+              if (isLandscape) {
+                // When the screenshot is landscape but our frame image is portrait
+                ctx.rotate(Math.PI / 2); // 90 degrees
+                frameWidth = drawHeight * 1.1;
+                // Fix typo in original code (double assignment)
+                frameHeight = frameWidth * (frameImg.height / frameImg.width);
               } else {
-                // If frame isn't loaded yet, set up a one-time load handler to redraw
-                frameImg.onload = () => {
-                  // Redraw the entire canvas once frame is loaded
-                  const reloadEvent = new Event('resize');
-                  window.dispatchEvent(reloadEvent);
-                };
+                // For portrait screenshots using portrait frames
+                frameWidth = drawWidth * 1.1;
+                frameHeight = frameWidth * (frameImg.height / frameImg.width);
               }
+              
+              // Draw frame slightly larger than the screenshot
+              ctx.drawImage(frameImg, -frameWidth/2, -frameHeight/2, frameWidth, frameHeight);
+              ctx.restore();
             }
-
-            renderText(); // Render text after screenshot
+            
+            // Always render the text after everything else
+            renderText();
           };
         } else {
           // If no frame, render text immediately
