@@ -18,6 +18,7 @@ function ProjectManager({
   const [projects, setProjects] = useState([]);
   const [projectName, setProjectName] = useState('');
   const [isOpen, setIsOpen] = useState(false);
+  const [importError, setImportError] = useState('');
   
   // Load saved projects list on mount
   useEffect(() => {
@@ -232,6 +233,122 @@ function ProjectManager({
     // Keep the panel open
   };
   
+  // Function to export the current project as JSON
+  const exportProjectAsJson = async () => {
+    if (!currentProject) {
+      alert('Please save your project before exporting.');
+      return;
+    }
+    
+    try {
+      // Fetch the complete project data from storage
+      const projectData = await StorageService.loadProject(currentProject.id);
+      
+      if (!projectData) {
+        alert('Could not load project data for export.');
+        return;
+      }
+      
+      // Create a complete project object with metadata and content
+      const exportData = {
+        id: currentProject.id,
+        name: currentProject.name,
+        date: currentProject.lastSaved || new Date().toISOString(),
+        data: projectData
+      };
+      
+      // Convert to JSON string
+      const jsonString = JSON.stringify(exportData, null, 2);
+      
+      // Create a blob and download link
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      
+      // Set download attributes
+      link.href = url;
+      link.download = `${currentProject.name.replace(/\s+/g, '_')}_export.json`;
+      
+      // Trigger download
+      document.body.appendChild(link);
+      link.click();
+      
+      // Clean up
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error exporting project:', error);
+      alert('Failed to export project: ' + error.message);
+    }
+  };
+  
+  // Function to import a project from JSON
+  const importProjectFromJson = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    setImportError('');
+    
+    try {
+      const reader = new FileReader();
+      
+      reader.onload = async (e) => {
+        try {
+          // Parse the JSON data
+          const importData = JSON.parse(e.target.result);
+          
+          // Validate the imported data has the required structure
+          if (!importData.id || !importData.name || !importData.data) {
+            setImportError('Invalid project file format.');
+            return;
+          }
+          
+          // Check if a project with the same ID already exists
+          const existingProjects = projects.filter(p => p.id === importData.id);
+          let projectId = importData.id;
+          let projectName = importData.name;
+          
+          if (existingProjects.length > 0) {
+            // Generate a new ID and modify the name to avoid conflicts
+            projectId = Date.now().toString();
+            projectName = `${importData.name} (Imported)`;
+          }
+          
+          // Save the imported project with its data
+          await StorageService.saveCurrentProject(projectId, importData.data);
+          
+          // Create project info
+          const projectInfo = {
+            id: projectId,
+            name: projectName,
+            date: new Date().toISOString()
+          };
+          
+          // Update projects list
+          const updatedProjects = [...projects, projectInfo];
+          setProjects(updatedProjects);
+          localStorage.setItem('appScreenshotProjects', JSON.stringify(updatedProjects));
+          
+          // Load the imported project
+          loadProject(projectId);
+          
+          // Close the modal
+          setIsOpen(false);
+          
+          alert('Project imported successfully!');
+        } catch (parseError) {
+          console.error('Error parsing import data:', parseError);
+          setImportError('Could not parse project file. It may be corrupted.');
+        }
+      };
+      
+      reader.readAsText(file);
+    } catch (error) {
+      console.error('Error importing project:', error);
+      setImportError('Failed to import project: ' + error.message);
+    }
+  };
+  
   return (
     <div className="relative flex gap-2">
       {/* Save button with dynamic color based on changes */}
@@ -303,6 +420,36 @@ function ProjectManager({
               )}
             </div>
           </div>
+          
+          <div className="flex gap-2 mb-4">
+            <button 
+              className="bg-green-600 text-white py-1 px-3 rounded-lg hover:bg-green-700 transition-colors flex items-center"
+              onClick={exportProjectAsJson}
+              disabled={!currentProject}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Export Project
+            </button>
+            
+            <label className="bg-purple-600 text-white py-1 px-3 rounded-lg hover:bg-purple-700 transition-colors cursor-pointer flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0l-4 4m4-4v12" />
+              </svg>
+              Import Project
+              <input 
+                type="file" 
+                accept=".json" 
+                className="hidden" 
+                onChange={importProjectFromJson} 
+              />
+            </label>
+          </div>
+          
+          {importError && (
+            <div className="text-red-500 text-sm mb-4">{importError}</div>
+          )}
           
           <div className="max-h-80 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg">
             {projects.length === 0 ? (

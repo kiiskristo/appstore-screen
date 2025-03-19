@@ -291,6 +291,69 @@ class StorageService {
       return [];
     }
   }
+
+  // Export a project to a portable format
+  async exportProject(projectId) {
+    try {
+      await this.dbReadyPromise;
+      
+      // If using IndexedDB
+      if (!this.useLocalStorage && this.dbReady) {
+        const tx = this.db.transaction(['projects'], 'readonly');
+        const store = tx.objectStore('projects');
+        
+        return new Promise((resolve, reject) => {
+          const request = store.get(projectId);
+          
+          request.onsuccess = () => {
+            if (request.result) {
+              resolve(request.result);
+            } else {
+              reject(new Error('Project not found'));
+            }
+          };
+          
+          request.onerror = (e) => {
+            reject(e);
+          };
+        });
+      } 
+      // If using localStorage
+      else {
+        const projectData = localStorage.getItem(`appScreenshotProject_${projectId}`);
+        if (projectData) {
+          return JSON.parse(projectData);
+        }
+        throw new Error('Project not found');
+      }
+    } catch (error) {
+      console.error('Error exporting project:', error);
+      throw error;
+    }
+  }
+
+  // Import a project from an exported format
+  async importProject(projectData) {
+    try {
+      await this.dbReadyPromise;
+      
+      // Generate a new ID to avoid conflicts
+      const newProjectId = Date.now().toString();
+      
+      // Save the imported project
+      await this.saveCurrentProject(newProjectId, projectData.data);
+      
+      // Return the new project ID
+      return {
+        id: newProjectId,
+        name: projectData.name,
+        date: new Date().toISOString()
+      };
+    } catch (error) {
+      console.error('Error importing project:', error);
+      throw error;
+    }
+  }
 }
 
 export default new StorageService(); 
