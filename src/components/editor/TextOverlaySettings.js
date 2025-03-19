@@ -206,7 +206,7 @@ function TextOverlaySettings({
           </div>
           
           {/* Position Settings */}
-          <h3 className="editor-subsection-title mt-4">Title Position</h3>
+          <h3 className="editor-label">Title Position</h3>
           <div className="mb-3">
             <select
               className="editor-input"
@@ -247,7 +247,7 @@ function TextOverlaySettings({
             </>
           )}
           
-          <h3 className="editor-subsection-title mt-4">Description Position</h3>
+          <h3 className="editor-label">Description Position</h3>
           <div className="mb-3">
             <select
               className="editor-input"
