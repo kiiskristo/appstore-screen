@@ -172,25 +172,54 @@ function App() {
     loadSavedState();
   }, []);
 
-  // Fix this function to properly load a project from ProjectManager
-  const loadProject = async (projectData) => {
-    try {
-      if (!projectData) {
-        console.error('Cannot load project: No project data provided');
-        return;
-      }
-      
-      // Set current project info
-      setCurrentProject({
-        id: projectData.id || Date.now().toString(),
-        name: projectData.name || "Untitled Project"
-      });
-      
-      // Set the project data directly
-      setProjectData(projectData);
-    } catch (error) {
-      console.error('Error loading project:', error);
+  // Update the loadProject function to properly handle missing data
+  const loadProject = (projectData) => {
+    if (!projectData) {
+      console.error("Tried to load undefined project data");
+      return;
     }
+
+    // Make sure arrays exist and are properly initialized with defaults
+    const safeProjectData = {
+      ...projectData,
+      screenshots: Array.isArray(projectData.screenshots) ? projectData.screenshots : [],
+      previewSettings: Array.isArray(projectData.previewSettings) && projectData.previewSettings.length > 0 
+        ? projectData.previewSettings 
+        : [{
+            // Default preview settings if none exists
+            screenshotIndex: -1,
+            rotation: 0,
+            scale: 90,
+            positionX: 0,
+            positionY: 0,
+            cornerRadius: 24,
+            useGradient: false,
+            gradientDirection: 'to right',
+            gradientColor1: '#4a6bff',
+            gradientColor2: '#45caff',
+            showText: false,
+            textTitle: 'Your App Name',
+            textDescription: 'The perfect solution for your needs',
+            titleFontSize: 24,
+            titleFontFamily: "'Segoe UI', sans-serif",
+            descriptionFontSize: 16,
+            descriptionFontFamily: "'Segoe UI', sans-serif",
+            textColor: '#ffffff',
+            textPosition: 'bottom',
+            titleFontWeight: 'bold',
+            descriptionFontWeight: 'normal',
+          }],
+      deviceType: projectData.deviceType || 'iphone',
+      orientation: projectData.orientation || 'portrait',
+      currentScreenshotIndex: projectData.currentScreenshotIndex !== undefined 
+        ? projectData.currentScreenshotIndex 
+        : (Array.isArray(projectData.screenshots) && projectData.screenshots.length > 0 ? 0 : -1),
+      activePreviewIndex: projectData.activePreviewIndex !== undefined 
+        ? projectData.activePreviewIndex : 0
+    };
+    
+    // Update all project data in one operation using setProjectData
+    setProjectData(safeProjectData);
   };
 
   // Fix the exportAllPreviews function
