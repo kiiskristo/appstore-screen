@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 
 function ScreenshotUploader({ 
-  screenshots, 
+  screenshots = [],
   setScreenshots, 
   currentScreenshotIndex, 
   setCurrentScreenshotIndex 
@@ -22,8 +22,11 @@ function ScreenshotUploader({
             // Determine orientation from image dimensions
             const isLandscape = img.width > img.height;
             
-            setScreenshots(prev => [
-              ...prev,
+            // Ensure screenshots is an array before updating
+            const currentScreenshots = Array.isArray(screenshots) ? screenshots : [];
+            
+            setScreenshots([
+              ...currentScreenshots,
               {
                 src: originalDataURL,
                 originalDataURL: originalDataURL,
@@ -101,7 +104,7 @@ function ScreenshotUploader({
         Or drag and drop images here
       </div>
       
-      {screenshots.length > 0 && (
+      {Array.isArray(screenshots) && screenshots.length > 0 && (
         <div className="mt-4">
           <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Available Screenshots

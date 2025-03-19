@@ -33,7 +33,10 @@ export default function useProjectManagement() {
       showFrame: true,
       frameColor: 'black',
       titleFontWeight: 'bold',
-      descriptionFontWeight: 'normal'
+      descriptionFontWeight: 'normal',
+      descriptionPosition: 'below',
+      descriptionPositionX: 50,
+      descriptionPositionY: 90
     }],
     deviceType: 'iphone',
     orientation: 'portrait',
@@ -54,7 +57,12 @@ export default function useProjectManagement() {
         setCurrentProject(projectInfo);
         const data = await storageService.loadProject(projectInfo.id);
         if (data) {
-          setProjectData(data);
+          // Ensure screenshots is always an array
+          const validData = {
+            ...data,
+            screenshots: Array.isArray(data.screenshots) ? data.screenshots : []
+          };
+          setProjectData(validData);
           setHasUnsavedChanges(false);
         }
       }

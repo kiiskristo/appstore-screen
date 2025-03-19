@@ -21,6 +21,8 @@ function PreviewContainer({
   const carouselRef = useRef(null);
   const [isAnimating, setIsAnimating] = useState(false);
   const [actualScale, setActualScale] = useState(0.2);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const exportMenuRef = useRef(null);
   
   // Completely simplified panel visibility logic
   const visiblePanels = useMemo(() => {
@@ -110,6 +112,20 @@ function PreviewContainer({
   // Get device name for display
   const deviceName = deviceType === 'iphone' ? 'iPhone' : 'iPad';
   
+  // Close the menu when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target)) {
+        setShowExportMenu(false);
+      }
+    }
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   return (
     <div className="flex-1 bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden flex flex-col">
       {/* Compact header with row layout */}
@@ -159,15 +175,20 @@ function PreviewContainer({
         {/* Controls moved to the right side */}
         <div className="flex items-center gap-2">          
           {/* Export buttons as a dropdown to save space */}
-          <div className="relative group">
-            <button className="bg-blue-600 text-white py-1 px-3 text-sm rounded-lg hover:bg-blue-700 transition-colors">
+          <div className="relative" ref={exportMenuRef}>
+            <button 
+              className="bg-blue-600 text-white py-1 px-3 text-sm rounded-lg hover:bg-blue-700 transition-colors"
+              onClick={() => setShowExportMenu(!showExportMenu)}
+            >
               Export Options ▾
             </button>
-            <div className="absolute right-0 mt-1 w-48 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-2 hidden group-hover:block z-10">
-              <div className="flex flex-col gap-2">
-                {exportButtons}
+            {showExportMenu && (
+              <div className="absolute right-0 mt-1 w-48 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-2 z-10">
+                <div className="flex flex-col gap-2">
+                  {exportButtons}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

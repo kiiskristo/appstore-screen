@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { detectDeviceFromDimensions, getFrameSource, deviceFrames } from '../assets/deviceFrameImages';
+import { renderExportCanvas } from '../utils/canvasExportUtils';
 
 // This component only handles canvas rendering logic - no UI navigation
 function CanvasPreviewPanelBase({
@@ -164,21 +165,21 @@ function CanvasPreviewPanelBase({
       const titleFontSize = currentSettings.titleFontSize;
       const descriptionFontSize = currentSettings.descriptionFontSize;
       
-      // Calculate text position
-      let textX = canvas.width / (2 * dpr);
-      let textY = canvas.height / (2 * dpr);
+      // Calculate text position for title
+      let titleX = canvas.width / (2 * dpr);
+      let titleY = canvas.height / (2 * dpr);
       
       // Position based on settings
       switch (currentSettings.textPosition) {
         case 'top':
-          textY = canvas.height * 0.15 / dpr;
+          titleY = canvas.height * 0.15 / dpr;
           break;
         case 'bottom':
-          textY = canvas.height * 0.85 / dpr;
+          titleY = canvas.height * 0.85 / dpr;
           break;
         case 'custom':
-          textX = canvas.width * (currentSettings.textPositionX / 100) / dpr;
-          textY = canvas.height * (currentSettings.textPositionY / 100) / dpr;
+          titleX = canvas.width * (currentSettings.textPositionX / 100) / dpr;
+          titleY = canvas.height * (currentSettings.textPositionY / 100) / dpr;
           break;
         default:
           break;
@@ -201,22 +202,32 @@ function CanvasPreviewPanelBase({
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       const titleLines = wrapText(ctx, title, titleMaxWidth);
-      let titleYOffset = textY - titleFontSize * (titleLines.length / 2);
+      let titleYOffset = titleY - titleFontSize * (titleLines.length / 2);
       
       titleLines.forEach((line, index) => {
-        ctx.fillText(line, textX, titleYOffset + (index * (titleFontSize * 1.2)));
+        ctx.fillText(line, titleX, titleYOffset + (index * (titleFontSize * 1.2)));
       });
+      
+      // Calculate position for description
+      let descriptionX = titleX; // Default to same X as title
+      let descriptionY;
+      
+      if (currentSettings.descriptionPosition === 'custom') {
+        // Use custom position for description
+        descriptionX = canvas.width * (currentSettings.descriptionPositionX / 100) / dpr;
+        descriptionY = canvas.height * (currentSettings.descriptionPositionY / 100) / dpr;
+      } else {
+        // Position below the title (default behavior)
+        descriptionY = titleYOffset + (titleLines.length * (titleFontSize * 1.2)) + descriptionFontSize;
+      }
       
       // Draw description with wrapping
       ctx.font = `${currentSettings.descriptionFontWeight} ${descriptionFontSize}px ${currentSettings.descriptionFontFamily}`;
       const descMaxWidth = canvas.width * 0.8 / dpr; // 80% of canvas width
       const descLines = wrapText(ctx, description, descMaxWidth);
       
-      // Start description below title with spacing
-      let descYOffset = titleYOffset + (titleLines.length * (titleFontSize * 1.2)) + descriptionFontSize;
-      
       descLines.forEach((line, index) => {
-        ctx.fillText(line, textX, descYOffset + (index * (descriptionFontSize * 1.2)));
+        ctx.fillText(line, descriptionX, descriptionY + (index * (descriptionFontSize * 1.2)));
       });
       
       ctx.restore();
@@ -380,15 +391,30 @@ function CanvasPreviewPanelBase({
     return new Promise((resolve) => {
       setIsExporting(true);
       try {
-        const link = document.createElement('a');
-        link.download = `app-screenshot-${activePreviewIndex + 1}.png`;
-        link.href = canvasRef.current.toDataURL('image/png');
-        link.click();
-        
-        setTimeout(() => {
-          setIsExporting(false);
-          resolve();
-        }, 100);
+        // Use the utility function for rendering the export canvas
+        renderExportCanvas({
+          deviceType,
+          orientation,
+          screenshots,
+          currentScreenshotIndex,
+          currentSettings,
+          deviceDimensions,
+          fontsLoaded,
+          activePreviewIndex,
+          detectDeviceFromDimensions,
+          getFrameSource
+        }).then(({ canvas, fileName }) => {
+          // Download the canvas
+          const link = document.createElement('a');
+          link.download = fileName;
+          link.href = canvas.toDataURL('image/png');
+          link.click();
+          
+          setTimeout(() => {
+            setIsExporting(false);
+            resolve();
+          }, 100);
+        });
       } catch (err) {
         console.error('Error exporting canvas:', err);
         setIsExporting(false);

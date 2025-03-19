@@ -13,7 +13,10 @@ function TextOverlaySettings({
   textColor, 
   textPosition, 
   textPositionX, 
-  textPositionY, 
+  textPositionY,
+  descriptionPosition,
+  descriptionPositionX,
+  descriptionPositionY,
   updatePreviewSetting 
 }) {
   // Add this font list to your TextOverlaySettings component
@@ -203,15 +206,15 @@ function TextOverlaySettings({
           </div>
           
           {/* Position Settings */}
+          <h3 className="editor-subsection-title mt-4">Title Position</h3>
           <div className="mb-3">
-            <label className="editor-label">Text Position</label>
-            <select 
+            <select
               className="editor-input"
-              value={textPosition} 
+              value={textPosition}
               onChange={(e) => updatePreviewSetting('textPosition', e.target.value)}
             >
-              <option value="top">Top</option>
               <option value="center">Center</option>
+              <option value="top">Top</option>
               <option value="bottom">Bottom</option>
               <option value="custom">Custom</option>
             </select>
@@ -220,26 +223,64 @@ function TextOverlaySettings({
           {textPosition === 'custom' && (
             <>
               <div className="mb-3">
-                <label className="editor-label">Position X: {textPositionX}</label>
-                <input 
-                  type="range" 
+                <label className="editor-label">Title X Position: {textPositionX}%</label>
+                <input
+                  type="range"
                   className="editor-range"
-                  min="0" 
-                  max="100" 
-                  value={textPositionX} 
-                  onChange={(e) => updatePreviewSetting('textPositionX', parseInt(e.target.value))} 
+                  min="0"
+                  max="100"
+                  value={textPositionX}
+                  onChange={(e) => updatePreviewSetting('textPositionX', parseInt(e.target.value))}
                 />
               </div>
-              
               <div className="mb-3">
-                <label className="editor-label">Position Y: {textPositionY}</label>
-                <input 
-                  type="range" 
+                <label className="editor-label">Title Y Position: {textPositionY}%</label>
+                <input
+                  type="range"
                   className="editor-range"
-                  min="0" 
-                  max="100" 
-                  value={textPositionY} 
-                  onChange={(e) => updatePreviewSetting('textPositionY', parseInt(e.target.value))} 
+                  min="0"
+                  max="100"
+                  value={textPositionY}
+                  onChange={(e) => updatePreviewSetting('textPositionY', parseInt(e.target.value))}
+                />
+              </div>
+            </>
+          )}
+          
+          <h3 className="editor-subsection-title mt-4">Description Position</h3>
+          <div className="mb-3">
+            <select
+              className="editor-input"
+              value={descriptionPosition || 'below'}
+              onChange={(e) => updatePreviewSetting('descriptionPosition', e.target.value)}
+            >
+              <option value="below">Below Title</option>
+              <option value="custom">Custom Position</option>
+            </select>
+          </div>
+          
+          {(descriptionPosition === 'custom') && (
+            <>
+              <div className="mb-3">
+                <label className="editor-label">Description X: {descriptionPositionX}%</label>
+                <input
+                  type="range"
+                  className="editor-range"
+                  min="0"
+                  max="100"
+                  value={descriptionPositionX || 50}
+                  onChange={(e) => updatePreviewSetting('descriptionPositionX', parseInt(e.target.value))}
+                />
+              </div>
+              <div className="mb-3">
+                <label className="editor-label">Description Y: {descriptionPositionY}%</label>
+                <input
+                  type="range"
+                  className="editor-range"
+                  min="0"
+                  max="100"
+                  value={descriptionPositionY || 60}
+                  onChange={(e) => updatePreviewSetting('descriptionPositionY', parseInt(e.target.value))}
                 />
               </div>
             </>
