@@ -193,6 +193,19 @@ function ProjectManager({
   // Load a saved project
   const handleLoadProject = async (projectId) => {
     try {
+      // Find the project info from the projects list
+      const projectInfo = projects.find(p => p.id === projectId);
+      if (!projectInfo) {
+        console.error('Project info not found for ID:', projectId);
+        return;
+      }
+      
+      // Save the current project info
+      StorageService.saveCurrentProjectInfo(projectInfo);
+      
+      // Update the current project in state
+      setCurrentProject(projectInfo);
+      
       // Load project data
       const projectData = await StorageService.loadProject(projectId);
       
@@ -321,8 +334,14 @@ function ProjectManager({
           const projectInfo = {
             id: projectId,
             name: projectName,
-            date: new Date().toISOString()
+            lastSaved: new Date().toISOString() // Add lastSaved field to match expected format
           };
+          
+          // Save current project info to localStorage
+          StorageService.saveCurrentProjectInfo(projectInfo);
+          
+          // Update state
+          setCurrentProject(projectInfo);
           
           // Update projects list
           const updatedProjects = [...projects, projectInfo];
