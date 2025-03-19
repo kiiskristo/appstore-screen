@@ -172,7 +172,10 @@ function App() {
     loadSavedState();
   }, []);
 
-  // Update the loadProject function to properly handle missing data
+  // In App.js, add a new state to track when projects are loaded
+  const [projectLoadTimestamp, setProjectLoadTimestamp] = useState(Date.now());
+
+  // Update the loadProject function
   const loadProject = (projectData) => {
     if (!projectData) {
       console.error("Tried to load undefined project data");
@@ -220,6 +223,9 @@ function App() {
     
     // Update all project data in one operation using setProjectData
     setProjectData(safeProjectData);
+    
+    // Set a new timestamp to force re-render of all canvas components
+    setProjectLoadTimestamp(Date.now());
   };
 
   // Fix the exportAllPreviews function
@@ -357,9 +363,10 @@ function App() {
               </div>
             }
             darkMode={darkMode}
+            projectLoadTimestamp={projectLoadTimestamp}
           >
             <CanvasPreviewPanel
-              id="canvas-preview"
+              key={`canvas-${activePreviewIndex}-${projectLoadTimestamp}`}
               deviceType={deviceType}
               orientation={orientation}
               screenshots={screenshots}

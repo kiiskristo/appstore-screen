@@ -16,7 +16,8 @@ function PreviewContainer({
   exportButtons,
   screenshots,
   currentScreenshotIndex,
-  darkMode
+  darkMode,
+  projectLoadTimestamp
 }) {
   const carouselRef = useRef(null);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -206,7 +207,7 @@ function PreviewContainer({
             >
               {previewSettings.map((settings, index) => (
                 <div 
-                  key={`preview-${index}`}
+                  key={`preview-${index}-${projectLoadTimestamp}`}
                   className={`w-1/3 h-full px-2 transition-all duration-300
                              ${index === activePreviewIndex ? '' : 'opacity-80 hover:opacity-100 cursor-pointer'}
                              ${visiblePanels.includes(index) ? '' : 'opacity-0'}`}
@@ -215,7 +216,7 @@ function PreviewContainer({
                   <div className="relative flex items-center justify-center h-full">
                     <CanvasPreviewPanel
                       id={`canvas-preview-${index}`}
-                      key={`canvas-${index}`}
+                      key={`canvas-${index}-${projectLoadTimestamp}`}
                       deviceType={deviceType}
                       orientation={orientation}
                       screenshots={screenshots}
