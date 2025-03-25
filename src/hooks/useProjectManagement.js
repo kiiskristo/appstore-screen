@@ -120,8 +120,8 @@ export default function useProjectManagement() {
   };
 
   useEffect(() => {
-    // Skip initial render and empty state
-    if (!projectData.screenshots.length) return;
+    // Skip only the initial render, not if there are no screenshots
+    if (projectData === null) return;
     
     // Mark as having unsaved changes when any relevant data changes
     setHasUnsavedChanges(true);

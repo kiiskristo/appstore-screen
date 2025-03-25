@@ -3,7 +3,7 @@ import Header from './components/Header';
 import EditorPanel from './components/EditorPanel';
 import CanvasPreviewPanel from './components/CanvasPreviewPanel';
 import PreviewContainer from './components/PreviewContainer';
-import ProjectManager from './components/ProjectManager';
+
 import useProjectManagement from './hooks/useProjectManagement';
 
 function App() {
@@ -143,12 +143,19 @@ function App() {
       return;
     }
     
+    // Determine what the new active index should be before removing
+    // If removing the last index, go to the previous one
+    const newActiveIndex = activePreviewIndex >= previewSettings.length - 1 
+      ? previewSettings.length - 2 
+      : activePreviewIndex;
+    
     setProjectData(prev => ({
       ...prev,
       previewSettings: prev.previewSettings.filter((_, index) => index !== activePreviewIndex)
     }));
     
-    updateProjectData('activePreviewIndex', 0);
+    // Set the new active index AFTER removing the preview
+    setActivePreviewIndex(newActiveIndex);
   };
 
   // Update the switching function to use the local state
@@ -289,24 +296,18 @@ function App() {
         darkMode={darkMode} 
         toggleDarkMode={() => setDarkMode(prev => !prev)} 
         currentProject={currentProject}
+        screenshots={screenshots}
+        previewSettings={previewSettings}
+        deviceType={deviceType}
+        orientation={orientation}
+        activePreviewIndex={activePreviewIndex}
+        loadProject={loadProject}
+        setCurrentProject={setCurrentProject}
+        hasUnsavedChanges={hasUnsavedChanges}
+        onSaveCurrentProject={saveProject}
       />
       
-      <div className="container mx-auto p-5">
-        <div className="flex justify-end mb-4">
-          <ProjectManager
-            screenshots={screenshots}
-            previewSettings={previewSettings}
-            deviceType={deviceType}
-            orientation={orientation}
-            currentScreenshotIndex={previewSettings[activePreviewIndex]?.screenshotIndex === undefined ? -1 : previewSettings[activePreviewIndex]?.screenshotIndex}
-            activePreviewIndex={activePreviewIndex}
-            loadProject={loadProject}
-            currentProject={currentProject}
-            setCurrentProject={setCurrentProject}
-            hasUnsavedChanges={hasUnsavedChanges}
-            onSaveCurrentProject={handleQuickSave}
-          />
-        </div>
+      <div className="container mx-auto">
         
         <div className="flex flex-col md:flex-row gap-6 mt-6 max-w-full overflow-hidden">
           <div className="flex-2 min-w-[300px]">

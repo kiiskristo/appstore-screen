@@ -15,8 +15,6 @@ function PreviewContainer({
   children,
   exportButtons,
   screenshots,
-  currentScreenshotIndex,
-  darkMode,
   projectLoadTimestamp
 }) {
   const carouselRef = useRef(null);
@@ -202,7 +200,7 @@ function PreviewContainer({
               ref={carouselRef}
               className={`flex w-full h-full transition-transform ${isAnimating ? 'duration-300 ease-in-out' : ''}`}
               style={{ 
-                width: `${previewSettings.length * 33.33}%` // Each panel is 1/3 of viewport
+                width: `${previewSettings.length >= 3 ? previewSettings.length * 33.33 : 100}%` // Only multiply if 3 or more panels
               }}
             >
               {previewSettings.map((settings, index) => (
