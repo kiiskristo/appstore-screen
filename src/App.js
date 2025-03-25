@@ -4,7 +4,6 @@ import EditorPanel from './components/EditorPanel';
 import CanvasPreviewPanel from './components/CanvasPreviewPanel';
 import PreviewContainer from './components/PreviewContainer';
 import ProjectManager from './components/ProjectManager';
-import storageService from './services/StorageService';
 import useProjectManagement from './hooks/useProjectManagement';
 
 function App() {
@@ -204,9 +203,9 @@ function App() {
             textTitle: 'Your App Name',
             textDescription: 'The perfect solution for your needs',
             titleFontSize: 24,
-            titleFontFamily: "'Segoe UI', sans-serif",
+            titleFontFamily: "'All Round Gothic', sans-serif",
             descriptionFontSize: 16,
-            descriptionFontFamily: "'Segoe UI', sans-serif",
+            descriptionFontFamily: "'All Round Gothic', sans-serif",
             textColor: '#ffffff',
             textPosition: 'bottom',
             titleFontWeight: 'bold',

@@ -21,6 +21,9 @@ function TextOverlaySettings({
 }) {
   // Add this font list to your TextOverlaySettings component
   const fontFamilies = [
+    // All Round Gothic (primary font)
+    { value: "'all-round-gothic', sans-serif", label: "All Round Gothic" },
+    
     // Sans-serif fonts (clean, modern)
     { value: "'Segoe UI', sans-serif", label: "Segoe UI" },
     { value: "'Helvetica Neue', Helvetica, Arial, sans-serif", label: "Helvetica Neue" },
@@ -49,6 +52,7 @@ function TextOverlaySettings({
     { value: '100', label: 'Light' },
     { value: '400', label: 'Regular' },
     { value: '500', label: 'Bold' },
+    { value: '600', label: 'Demi Bold' },
     { value: '700', label: 'Extra Bold' },
   ];
 
